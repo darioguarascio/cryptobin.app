@@ -1,0 +1,15 @@
+services:
+  app:
+    image: darioguarascio/cryptobin.app:${IMAGE_TAG}
+    container_name: cryptobin.app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-127.0.0.1:18080}:4321"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4321
+      SITE_URL: ${SITE_URL}
+      SECRET_TTL_HOURS: ${SECRET_TTL_HOURS:-24}
+      TZ: ${TZ:-Europe/Rome}

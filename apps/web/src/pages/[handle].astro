@@ -1,0 +1,10 @@
+---
+import InboxDrop from '@/components/InboxDrop';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+const { handle } = Astro.params;
+---
+
+<BaseLayout title={`CryptoBin inbox: ${handle}`}>
+  <InboxDrop client:load handle={handle ?? ''} />
+</BaseLayout>

@@ -1,0 +1,10 @@
+---
+import SecretReceivePage from '@/components/SecretReceivePage';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+const { id } = Astro.params;
+---
+
+<BaseLayout title="CryptoBin secret">
+  <SecretReceivePage client:load secretId={id ?? ''} />
+</BaseLayout>

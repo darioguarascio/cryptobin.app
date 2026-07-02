@@ -1,0 +1,18 @@
+{
+  "name": "cryptobin",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm --workspace @cryptobin/web run dev",
+    "build": "npm --workspace @cryptobin/web run build",
+    "preview": "npm --workspace @cryptobin/web run preview",
+    "test": "npm --workspace @cryptobin/web run test",
+    "test:coverage": "npm --workspace @cryptobin/web run test:coverage"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

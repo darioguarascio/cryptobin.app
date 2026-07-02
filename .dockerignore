@@ -1,0 +1,11 @@
+node_modules
+apps/web/node_modules
+apps/web/dist
+apps/web/.astro
+apps/web/coverage
+.git
+.cursor
+.env
+.env.*
+!.env.example
+deploy/.env
