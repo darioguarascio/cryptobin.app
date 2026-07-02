@@ -10,7 +10,9 @@
     "build": "npm --workspace @cryptobin/web run build",
     "preview": "npm --workspace @cryptobin/web run preview",
     "test": "npm --workspace @cryptobin/web run test",
-    "test:coverage": "npm --workspace @cryptobin/web run test:coverage"
+    "test:coverage": "npm --workspace @cryptobin/web run test:coverage",
+    "db:generate": "npm --workspace @cryptobin/web run db:generate",
+    "db:migrate": "npm --workspace @cryptobin/web run db:migrate"
   },
   "engines": {
     "node": ">=22"

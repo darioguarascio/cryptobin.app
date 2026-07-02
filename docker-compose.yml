@@ -12,4 +12,11 @@ services:
       PORT: 4321
       SITE_URL: ${SITE_URL}
       SECRET_TTL_HOURS: ${SECRET_TTL_HOURS:-24}
+      DATABASE_URL: ${DATABASE_URL}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@cryptobin.app}
       TZ: ${TZ:-Europe/Rome}

@@ -1,10 +1,36 @@
 ---
 import InboxDrop from '@/components/InboxDrop';
+import InboxNotFound from '@/components/InboxNotFound';
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { eq } from 'drizzle-orm';
+import { getDb } from '@/db';
+import { users } from '@/db/schema';
+import { normalizeHandle } from '@/lib/handles';
 
-const { handle } = Astro.params;
+const { handle: rawHandle } = Astro.params;
+const handle = normalizeHandle(rawHandle ?? '');
+
+let exists = false;
+
+if (handle) {
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ handle: users.handle })
+      .from(users)
+      .where(eq(users.handle, handle))
+      .limit(1);
+    exists = Boolean(row);
+  } catch {
+    exists = false;
+  }
+}
 ---
 
-<BaseLayout title={`CryptoBin inbox: ${handle}`}>
-  <InboxDrop client:load handle={handle ?? ''} />
+<BaseLayout title={exists ? `CryptoBin inbox: ${handle}` : 'Inbox not found'}>
+  {exists ? (
+    <InboxDrop client:load handle={handle} />
+  ) : (
+    <InboxNotFound client:load handle={handle || 'unknown'} />
+  )}
 </BaseLayout>

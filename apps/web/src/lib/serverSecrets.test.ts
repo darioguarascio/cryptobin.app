@@ -35,6 +35,14 @@ describe('server secret store', () => {
     expect(consumeSecret(fresh.id)?.id).toBe(fresh.id);
   });
 
+  it('generates shorter ids for shorter expiries', () => {
+    const short = storeSecret(payload);
+    const long = storeSecret({ ...payload, algorithm: 'AES-GCM-256', ttlHours: 168 });
+
+    expect(short.id.length).toBeLessThan(long.id.length);
+    expect(short.id).not.toContain('-');
+  });
+
   it('rejects malformed encrypted payloads', () => {
     expect(() =>
       storeSecret({

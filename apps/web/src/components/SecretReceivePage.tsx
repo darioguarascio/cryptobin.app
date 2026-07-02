@@ -1,14 +1,17 @@
-import { AlertTriangle, Clipboard, Eye, Lock } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertTriangle, Eye, Lock } from 'lucide-react';
+import { useState } from 'react';
 import {
   decryptSecret,
   type EncryptedSecretPayload,
   type PlainSecret,
 } from '@/lib/crypto';
 import CipherHeroCanvas from './CipherHeroCanvas';
+import CopyButton from './CopyButton';
+import ThemeSwitcher from './ThemeSwitcher';
 import VaultSaveControl from './VaultSaveControl';
 
 type ViewState =
+  | { kind: 'cta' }
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; secret: PlainSecret };
@@ -17,37 +20,50 @@ interface SecretReceivePageProps {
   secretId: string;
 }
 
+function readShareKey(): string {
+  return window.location.hash.slice(1);
+}
+
 export default function SecretReceivePage({ secretId }: SecretReceivePageProps) {
-  const [view,       setView]       = useState<ViewState>({ kind: 'loading' });
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const [view, setView] = useState<ViewState>(() => {
+    const decryptionKey = typeof window !== 'undefined' ? readShareKey() : '';
+    if (!secretId || !decryptionKey) {
+      return {
+        kind: 'error',
+        message: 'This link is missing the secret id or decryption key.',
+      };
+    }
+    return { kind: 'cta' };
+  });
 
-  useEffect(() => {
-    const key = window.location.hash.slice(1);
+  async function revealSecret() {
+    const decryptionKey = readShareKey();
 
-    if (!secretId || !key) {
-      setView({ kind: 'error', message: 'This link is missing the secret id or decryption key.' });
+    if (!secretId || !decryptionKey) {
+      setView({
+        kind: 'error',
+        message: 'This link is missing the secret id or decryption key.',
+      });
       return;
     }
 
-    void fetch(`/api/secrets/${encodeURIComponent(secretId)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error('This secret is missing, expired, or already opened.');
-        const payload = (await response.json()) as EncryptedSecretPayload;
-        const plain = await decryptSecret(payload, key);
-        setView({ kind: 'ready', secret: plain });
-      })
-      .catch((error: unknown) => {
-        setView({
-          kind: 'error',
-          message: error instanceof Error ? error.message : 'Unable to open this secret.',
-        });
-      });
-  }, [secretId]);
+    setView({ kind: 'loading' });
 
-  async function copySecret(body: string) {
-    await navigator.clipboard.writeText(body);
-    setCopyStatus('copied');
-    window.setTimeout(() => setCopyStatus('idle'), 2000);
+    try {
+      const response = await fetch(`/api/secrets/${encodeURIComponent(secretId)}`);
+      if (!response.ok) {
+        throw new Error('This secret is missing, expired, or already opened.');
+      }
+
+      const payload = (await response.json()) as EncryptedSecretPayload;
+      const plain = await decryptSecret(payload, decryptionKey);
+      setView({ kind: 'ready', secret: plain });
+    } catch (error: unknown) {
+      setView({
+        kind: 'error',
+        message: error instanceof Error ? error.message : 'Unable to open this secret.',
+      });
+    }
   }
 
   return (
@@ -55,24 +71,48 @@ export default function SecretReceivePage({ secretId }: SecretReceivePageProps) 
       <CipherHeroCanvas />
 
       <div className="page-inner">
-        {/* Top bar */}
         <header className="top-bar">
           <div className="top-bar-logo">
             <Lock size={16} />
             CryptoBin
           </div>
+          <div className="top-bar-actions">
+            <ThemeSwitcher />
+          </div>
         </header>
 
-        {/* Content */}
         <div className="receive-center">
           <div className="receive-header">
             <div className="receive-header-icon">
               <Eye size={24} aria-hidden="true" />
             </div>
-            <h1>A secret has been shared with you</h1>
+            <h1>
+              {view.kind === 'ready'
+                ? 'Your secret is ready'
+                : 'A secret has been shared with you'}
+            </h1>
           </div>
 
           <section className="receive-card">
+            {view.kind === 'cta' && (
+              <div className="receive-reveal">
+                <p className="receive-reveal-copy">
+                  Someone sent you a one-time encrypted message. Reveal it only when you are
+                  ready — opening it permanently deletes it from the server.
+                </p>
+                <div className="receive-warning" role="note">
+                  <AlertTriangle size={18} aria-hidden="true" />
+                  <p>
+                    This link works once. After you reveal the secret, it cannot be opened again.
+                  </p>
+                </div>
+                <button type="button" className="create-btn" onClick={() => void revealSecret()}>
+                  <Eye size={15} />
+                  Reveal secret
+                </button>
+              </div>
+            )}
+
             {view.kind === 'loading' && (
               <p className="receive-status">Decrypting secret in your browser…</p>
             )}
@@ -101,16 +141,10 @@ export default function SecretReceivePage({ secretId }: SecretReceivePageProps) 
                 )}
 
                 <div className="secret-display">
-                  <button
-                    type="button"
-                    className="secret-copy"
-                    onClick={() => void copySecret(view.secret.body)}
-                  >
-                    <Clipboard size={13} aria-hidden="true" />
-                    {copyStatus === 'copied' ? 'Copied!' : 'Copy'}
-                  </button>
                   <pre className="secret-body">{view.secret.body}</pre>
                 </div>
+
+                <CopyButton text={view.secret.body} label="Copy secret" />
 
                 <div className="receive-warning" role="note">
                   <AlertTriangle size={18} aria-hidden="true" />
@@ -128,8 +162,8 @@ export default function SecretReceivePage({ secretId }: SecretReceivePageProps) 
           <section className="receive-card receive-about">
             <h2>About CryptoBin</h2>
             <p>
-              Each secret is a one-time link. The moment you opened it, it was permanently
-              deleted from the server. No second chance.
+              Each secret is a one-time link. Nothing is fetched until you choose to reveal it.
+              After that, it is permanently deleted from the server.
             </p>
             <p>
               Everything is encrypted and decrypted in your browser. The decryption key lives

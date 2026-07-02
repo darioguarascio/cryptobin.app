@@ -1,4 +1,8 @@
 import { base64UrlToBytes, bytesToBase64Url, bytesToString, stringToBytes } from './encoding';
+import { shareLinkProfileForTtlHours, type ShareCipherAlgorithm } from './shareLink';
+
+export type { ShareLinkProfile } from './shareLink';
+export { shareLinkProfileForTtlHours } from './shareLink';
 
 export interface SecretMetadata {
   from?: string;
@@ -14,25 +18,34 @@ export interface PlainSecret {
 
 export interface EncryptedSecretPayload {
   version: 1;
-  algorithm: 'AES-GCM-256';
+  algorithm: ShareCipherAlgorithm;
   iv: string;
   ciphertext: string;
 }
 
 const AES_GCM = 'AES-GCM';
-const KEY_LENGTH_BITS = 256;
 const IV_LENGTH_BYTES = 12;
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
-export async function encryptSecret(secret: PlainSecret): Promise<{
+function assertShareAlgorithm(algorithm: string): asserts algorithm is ShareCipherAlgorithm {
+  if (algorithm !== 'AES-GCM-128' && algorithm !== 'AES-GCM-256') {
+    throw new Error('Unsupported secret payload');
+  }
+}
+
+export async function encryptSecret(
+  secret: PlainSecret,
+  ttlHours = 24,
+): Promise<{
   payload: EncryptedSecretPayload;
   key: string;
 }> {
+  const profile = shareLinkProfileForTtlHours(ttlHours);
   const key = await crypto.subtle.generateKey(
-    { name: AES_GCM, length: KEY_LENGTH_BITS },
+    { name: AES_GCM, length: profile.keyBits },
     true,
     ['encrypt', 'decrypt'],
   );
@@ -48,7 +61,7 @@ export async function encryptSecret(secret: PlainSecret): Promise<{
   return {
     payload: {
       version: 1,
-      algorithm: 'AES-GCM-256',
+      algorithm: profile.algorithm,
       iv: bytesToBase64Url(iv),
       ciphertext: bytesToBase64Url(new Uint8Array(encrypted)),
     },
@@ -60,9 +73,11 @@ export async function decryptSecret(
   payload: EncryptedSecretPayload,
   key: string,
 ): Promise<PlainSecret> {
-  if (payload.version !== 1 || payload.algorithm !== 'AES-GCM-256') {
+  if (payload.version !== 1) {
     throw new Error('Unsupported secret payload');
   }
+
+  assertShareAlgorithm(payload.algorithm);
 
   const importedKey = await crypto.subtle.importKey(
     'raw',
@@ -84,7 +99,7 @@ const SHARE_PATH = /^\/s\/([^/?#]+)\/?$/;
 
 export function buildShareUrl(origin: string, secretId: string, key: string): string {
   const base = origin.replace(/\/$/, '');
-  return `${base}/s/${encodeURIComponent(secretId)}#${key}`;
+  return `${base}/s/${secretId}#${key}`;
 }
 
 export function parseShareUrl(location: Pick<Location, 'pathname' | 'hash'>): {
@@ -98,5 +113,8 @@ export function parseShareUrl(location: Pick<Location, 'pathname' | 'hash'>): {
     return null;
   }
 
-  return { secretId: decodeURIComponent(secretId), key };
+  return {
+    secretId: decodeURIComponent(secretId),
+    key,
+  };
 }

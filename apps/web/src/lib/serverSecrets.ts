@@ -1,8 +1,11 @@
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { bytesToBase64Url } from './encoding';
+import { shareLinkProfileForTtlHours } from './shareLink';
 
 export const storedSecretSchema = z.object({
   version: z.literal(1),
-  algorithm: z.literal('AES-GCM-256'),
+  algorithm: z.enum(['AES-GCM-256', 'AES-GCM-128']),
   iv: z.string().min(12),
   ciphertext: z.string().min(16),
   metadataPreview: z
@@ -29,11 +32,16 @@ interface StoredRecord {
 const records = new Map<string, StoredRecord>();
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+function generateSecretId(ttlHours: number): string {
+  const { idBytes } = shareLinkProfileForTtlHours(ttlHours);
+  return bytesToBase64Url(new Uint8Array(randomBytes(idBytes)));
+}
+
 export function storeSecret(input: StoredSecretInput): StoredRecord {
   const payload = storedSecretSchema.parse(input);
   const now = Date.now();
   const record: StoredRecord = {
-    id: crypto.randomUUID(),
+    id: generateSecretId(payload.ttlHours),
     payload,
     createdAt: now,
     expiresAt: now + payload.ttlHours * ONE_HOUR_MS,

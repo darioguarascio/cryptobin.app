@@ -1,51 +1,63 @@
-import { CheckCircle, ChevronDown, Clipboard, Eye, Lock, Plus, Send, ShieldCheck } from 'lucide-react';
+import { CheckCircle, ChevronDown, Eye, Lock, Send, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-import { buildShareUrl, encryptSecret } from '@/lib/crypto';
+import { encryptInboxDrop } from '@/lib/inboxCrypto';
+import type { PlainSecret } from '@/lib/crypto';
 import CipherHeroCanvas from './CipherHeroCanvas';
+import ThemeSwitcher from './ThemeSwitcher';
 
 interface Props {
   handle: string;
 }
 
 export default function InboxDrop({ handle }: Props) {
-  const [from,        setFrom]        = useState('');
-  const [label,       setLabel]       = useState('');
+  const [from, setFrom] = useState('');
+  const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
-  const [secret,      setSecret]      = useState('');
-  const [link,        setLink]        = useState('');
-  const [busy,        setBusy]        = useState(false);
-  const [error,       setError]       = useState('');
-  const [copyLabel,   setCopyLabel]   = useState('Copy link');
-  const [showAdv,     setShowAdv]     = useState(false);
+  const [secret, setSecret] = useState('');
+  const [delivered, setDelivered] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [showAdv, setShowAdv] = useState(false);
 
   async function submitDrop(e: React.FormEvent) {
     e.preventDefault();
     if (!secret.trim()) return;
     setError('');
     setBusy(true);
-    setLink('');
+    setDelivered(false);
 
     try {
-      const encrypted = await encryptSecret({
+      const publicKeyResponse = await fetch(`/api/inbox/public/${encodeURIComponent(handle)}`);
+      if (!publicKeyResponse.ok) {
+        throw new Error('This inbox does not exist.');
+      }
+
+      const { publicKey } = (await publicKeyResponse.json()) as { publicKey: string };
+      const plain: PlainSecret = {
         body: secret,
         metadata: {
-          from:        from.trim()        || undefined,
-          label:       label.trim()       || undefined,
+          from: from.trim() || undefined,
+          label: label.trim() || undefined,
           description: description.trim() || undefined,
           recipient: handle,
         },
-      });
+      };
 
-      const response = await fetch('/api/secrets', {
+      const encrypted = await encryptInboxDrop(publicKey, plain);
+      const response = await fetch(`/api/inbox/drop/${encodeURIComponent(handle)}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...encrypted.payload, ttlHours: 24 }),
+        body: JSON.stringify({
+          ...encrypted,
+          metadataPreview: plain.metadata,
+        }),
       });
 
-      if (!response.ok) throw new Error('Unable to store the encrypted inbox drop.');
+      if (!response.ok) {
+        throw new Error('Unable to deliver the encrypted inbox drop.');
+      }
 
-      const result = (await response.json()) as { id: string };
-      setLink(buildShareUrl(window.location.origin, result.id, encrypted.key));
+      setDelivered(true);
       setSecret('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create drop.');
@@ -54,18 +66,11 @@ export default function InboxDrop({ handle }: Props) {
     }
   }
 
-  async function handleCopy() {
-    await navigator.clipboard.writeText(link);
-    setCopyLabel('Copied!');
-    setTimeout(() => setCopyLabel('Copy link'), 2000);
-  }
-
   return (
     <div className="page">
       <CipherHeroCanvas />
 
       <div className="page-inner">
-        {/* Top bar */}
         <header className="top-bar">
           <div className="top-bar-logo">
             <Lock size={16} />
@@ -74,50 +79,38 @@ export default function InboxDrop({ handle }: Props) {
           <div className="top-bar-chips">
             <span className="chip"><ShieldCheck size={11} /> Browser-only crypto</span>
             <span className="chip">AES-256-GCM</span>
-            <span className="chip"><Eye size={11} /> Burn once</span>
+            <span className="chip"><Eye size={11} /> Encrypted inbox</span>
+          </div>
+          <div className="top-bar-actions">
+            <ThemeSwitcher />
           </div>
         </header>
 
-        {/* Main card */}
         <main className="page-center">
           <div className="encrypt-card">
-            {link ? (
-              /* Result view */
+            {delivered ? (
               <div className="result-view" aria-live="polite">
                 <div className="result-check">
                   <CheckCircle size={22} />
-                  <p className="result-ready">Encrypted drop created</p>
+                  <p className="result-ready">Secret delivered to inbox</p>
                 </div>
-
-                <div className="result-url-box">
-                  <a href={link} className="result-url">{link}</a>
-                </div>
-
                 <small className="result-expiry">
-                  Burns after one open · Expires in 24 hours · Addressed to {handle}
+                  Encrypted for <span style={{ color: 'var(--accent)' }}>{handle}</span>.
+                  Only they can decrypt it after unlocking their account.
                 </small>
-
-                <div className="result-actions">
-                  <button className="create-btn" type="button" onClick={() => void handleCopy()}>
-                    <Clipboard size={15} />
-                    {copyLabel}
-                  </button>
-                  <button
-                    className="new-btn"
-                    type="button"
-                    onClick={() => { setLink(''); setError(''); setCopyLabel('Copy link'); }}
-                  >
-                    <Plus size={15} />
-                    New
-                  </button>
-                </div>
+                <button
+                  className="new-btn"
+                  type="button"
+                  onClick={() => { setDelivered(false); setError(''); }}
+                >
+                  Send another
+                </button>
               </div>
             ) : (
-              /* Compose form */
               <>
                 <div className="card-head">
                   <h1>Drop a secret to <span style={{ color: 'var(--accent)' }}>{handle}</span></h1>
-                  <p>Encrypted here in your browser · Burned after one open</p>
+                  <p>Encrypted in your browser · Delivered to their private inbox</p>
                 </div>
 
                 <form className="composer" onSubmit={(e) => void submitDrop(e)}>
@@ -132,7 +125,6 @@ export default function InboxDrop({ handle }: Props) {
                     />
                   </div>
 
-                  {/* Advanced toggle */}
                   <div>
                     <button
                       type="button"
@@ -184,7 +176,7 @@ export default function InboxDrop({ handle }: Props) {
                     {busy ? (
                       <><span className="btn-spinner" aria-hidden="true" /> Encrypting…</>
                     ) : (
-                      <><Send size={15} /> Seal &amp; send drop</>
+                      <><Send size={15} /> Seal &amp; send to inbox</>
                     )}
                   </button>
                 </form>

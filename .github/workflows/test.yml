@@ -18,4 +18,5 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - run: bash scripts/check-migrations.sh
       - run: npm run test:coverage

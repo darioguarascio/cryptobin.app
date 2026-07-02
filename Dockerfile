@@ -39,6 +39,8 @@ COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/apps/web/package.json ./apps/web/
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/apps/web/public ./apps/web/public
+COPY --from=build /app/apps/web/drizzle ./apps/web/drizzle
+COPY --from=build /app/apps/web/scripts/migrate.mjs ./apps/web/scripts/migrate.mjs
 
 RUN chown -R nodejs:nodejs /app
 USER nodejs
@@ -49,4 +51,4 @@ EXPOSE 4321
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://localhost:4321/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["node", "dist/server/entry.mjs"]
+CMD ["sh", "-c", "node scripts/migrate.mjs && node dist/server/entry.mjs"]

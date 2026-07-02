@@ -194,14 +194,16 @@ export default function CipherHeroCanvas() {
     }
 
     resize();
-    const themeWatcher = window.matchMedia('(prefers-color-scheme: dark)');
+    const onThemeChange = () => {
+      palette = readPalette();
+    };
     window.addEventListener('resize', resize);
-    themeWatcher.addEventListener('change', resize);
+    window.addEventListener('cryptobin:theme-change', onThemeChange);
     animationFrame = requestAnimationFrame(draw);
 
     return () => {
       window.removeEventListener('resize', resize);
-      themeWatcher.removeEventListener('change', resize);
+      window.removeEventListener('cryptobin:theme-change', onThemeChange);
       cancelAnimationFrame(animationFrame);
     };
   }, []);

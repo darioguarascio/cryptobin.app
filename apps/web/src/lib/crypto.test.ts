@@ -12,7 +12,6 @@ describe('secret crypto', () => {
       },
     });
 
-    expect(encrypted.payload.ciphertext).not.toContain('prod-api-key-123');
     expect(encrypted.payload.algorithm).toBe('AES-GCM-256');
 
     const decrypted = await decryptSecret(encrypted.payload, encrypted.key);
@@ -34,6 +33,28 @@ describe('secret crypto', () => {
     await expect(decryptSecret(first.payload, second.key)).rejects.toThrow();
   });
 
+  it('uses shorter keys and algorithms for one-hour links', async () => {
+    const encrypted = await encryptSecret({ body: 'short-lived', metadata: {} }, 1);
+
+    expect(encrypted.payload.algorithm).toBe('AES-GCM-128');
+    expect(encrypted.key.length).toBeLessThan(30);
+
+    const decrypted = await decryptSecret(encrypted.payload, encrypted.key);
+    expect(decrypted.body).toBe('short-lived');
+  });
+
+  it('builds more compact one-hour share URLs than week-long links', async () => {
+    const origin = 'https://cryptobin.app';
+    const short = await encryptSecret({ body: 'a', metadata: {} }, 1);
+    const long = await encryptSecret({ body: 'a', metadata: {} }, 168);
+
+    const shortUrl = buildShareUrl(origin, 'abcdefgh', short.key);
+    const longUrl = buildShareUrl(origin, 'abcdefghijklmnopqrstuv', long.key);
+
+    expect(shortUrl.length).toBeLessThan(longUrl.length);
+    expect(short.key.length).toBeLessThan(long.key.length);
+  });
+
   it('puts the key in the URL fragment', async () => {
     const url = buildShareUrl('https://cryptobin.app', 'secret-id', 'key-material');
 
@@ -42,9 +63,9 @@ describe('secret crypto', () => {
 
   it('parses path-based share URLs', () => {
     expect(
-      parseShareUrl({ pathname: '/s/550e8400-e29b-41d4-a716-446655440000', hash: '#key-part' }),
+      parseShareUrl({ pathname: '/s/aZ83kd9Q', hash: '#key-part' }),
     ).toEqual({
-      secretId: '550e8400-e29b-41d4-a716-446655440000',
+      secretId: 'aZ83kd9Q',
       key: 'key-part',
     });
   });

@@ -1,7 +1,9 @@
-import { CheckCircle, ChevronDown, Clipboard, Eye, Lock, Plus, Send, ShieldCheck } from 'lucide-react';
+import { CheckCircle, ChevronDown, Eye, Inbox, KeyRound, Link2, Lock, Plus, Send, ShieldCheck, Timer, Trash2, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { buildShareUrl, encryptSecret } from '@/lib/crypto';
 import CipherHeroCanvas from './CipherHeroCanvas';
+import CopyButton from './CopyButton';
+import ThemeSwitcher from './ThemeSwitcher';
 
 interface CreatedSecret {
   url: string;
@@ -24,7 +26,6 @@ export default function CryptoBinApp() {
   const [created,     setCreated]     = useState<CreatedSecret | null>(null);
   const [busy,        setBusy]        = useState(false);
   const [error,       setError]       = useState('');
-  const [copyLabel,   setCopyLabel]   = useState('Copy link');
   const [showAdv,     setShowAdv]     = useState(false);
 
   const canCreate = useMemo(
@@ -40,14 +41,17 @@ export default function CryptoBinApp() {
     setCreated(null);
 
     try {
-      const encrypted = await encryptSecret({
-        body: secret,
-        metadata: {
-          from:        from.trim()        || undefined,
-          label:       label.trim()       || undefined,
-          description: description.trim() || undefined,
+      const encrypted = await encryptSecret(
+        {
+          body: secret,
+          metadata: {
+            from:        from.trim()        || undefined,
+            label:       label.trim()       || undefined,
+            description: description.trim() || undefined,
+          },
         },
-      });
+        ttlHours,
+      );
 
       const res = await fetch('/api/secrets', {
         method: 'POST',
@@ -70,17 +74,9 @@ export default function CryptoBinApp() {
     }
   }
 
-  async function handleCopy() {
-    if (!created) return;
-    await navigator.clipboard.writeText(created.url);
-    setCopyLabel('Copied!');
-    setTimeout(() => setCopyLabel('Copy link'), 2000);
-  }
-
   function handleReset() {
     setCreated(null);
     setError('');
-    setCopyLabel('Copy link');
   }
 
   const expiresLabel = created
@@ -91,7 +87,7 @@ export default function CryptoBinApp() {
     : '';
 
   return (
-    <div className="page">
+    <div className="page" id="top">
       <CipherHeroCanvas />
 
       <div className="page-inner">
@@ -105,6 +101,13 @@ export default function CryptoBinApp() {
             <span className="chip"><ShieldCheck size={11} /> Browser-only crypto</span>
             <span className="chip">AES-256-GCM</span>
             <span className="chip"><Eye size={11} /> Burn once</span>
+          </div>
+          <div className="top-bar-actions">
+            <ThemeSwitcher />
+            <div className="top-bar-auth-links">
+              <a className="chip-btn" href="/login">Log in</a>
+              <a className="chip-btn accent" href="/register">Create inbox</a>
+            </div>
           </div>
         </header>
 
@@ -122,6 +125,7 @@ export default function CryptoBinApp() {
 
                 <div className="result-url-box">
                   <a href={created.url} className="result-url">{created.url}</a>
+                  <CopyButton text={created.url} label="Copy" variant="inline" />
                 </div>
 
                 <small className="result-expiry">
@@ -129,10 +133,7 @@ export default function CryptoBinApp() {
                 </small>
 
                 <div className="result-actions">
-                  <button className="create-btn" type="button" onClick={() => void handleCopy()}>
-                    <Clipboard size={15} />
-                    {copyLabel}
-                  </button>
+                  <CopyButton text={created.url} label="Copy link" />
                   <button className="new-btn" type="button" onClick={handleReset}>
                     <Plus size={15} />
                     New
@@ -264,6 +265,132 @@ export default function CryptoBinApp() {
             </div>
           </div>
         </section>
+
+        <section className="landing-section" aria-label="Features">
+          <div className="landing-head">
+            <p className="eyebrow">Built for real handoffs</p>
+            <h2>Share credentials without leaving a trail</h2>
+            <p>
+              Passwords, API keys, recovery codes — anything too sensitive for Slack or email.
+              CryptoBin encrypts before upload and destroys after read.
+            </p>
+          </div>
+          <div className="feature-grid">
+            <article className="feature-card">
+              <span className="feature-card-icon" aria-hidden="true"><KeyRound size={18} /></span>
+              <h3>Zero-knowledge by design</h3>
+              <p>
+                Keys never touch the server. The decryption material stays in the URL hash,
+                which browsers do not send in HTTP requests.
+              </p>
+            </article>
+            <article className="feature-card">
+              <span className="feature-card-icon" aria-hidden="true"><Trash2 size={18} /></span>
+              <h3>Burn after reading</h3>
+              <p>
+                One-time links are deleted the moment they are opened. No replays, no
+                accidental re-sharing from a stale cache.
+              </p>
+            </article>
+            <article className="feature-card">
+              <span className="feature-card-icon" aria-hidden="true"><Timer size={18} /></span>
+              <h3>Expiry you control</h3>
+              <p>
+                Pick 1 hour to 7 days. Shorter TTLs use tighter link formats — less to
+                copy, same AES-256-GCM protection.
+              </p>
+            </article>
+            <article className="feature-card">
+              <span className="feature-card-icon" aria-hidden="true"><Inbox size={18} /></span>
+              <h3>Personal inbox</h3>
+              <p>
+                Register a handle and let others drop secrets to you. RSA-OAEP wraps each
+                delivery; only your unlocked key can read it.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section className="landing-section" aria-label="Two ways to share">
+          <div className="landing-head">
+            <p className="eyebrow">Two modes</p>
+            <h2>One-time link or standing inbox</h2>
+            <p>Use the right tool for the moment — both run the same client-side crypto.</p>
+          </div>
+          <div className="mode-grid">
+            <article className="mode-card">
+              <span className="feature-card-icon" aria-hidden="true"><Link2 size={18} /></span>
+              <h3>One-time share link</h3>
+              <p>
+                Paste a secret, get a link, send it anywhere. The recipient clicks to reveal;
+                the ciphertext is gone after that single view.
+              </p>
+              <a href="#top">Create a link ↑</a>
+            </article>
+            <article className="mode-card">
+              <span className="feature-card-icon" aria-hidden="true"><Inbox size={18} /></span>
+              <h3>Encrypted inbox</h3>
+              <p>
+                Claim a handle like <code>you.cryptobin.app/yourname</code>. Teammates drop
+                secrets there; you decrypt and optionally save to your vault.
+              </p>
+              <a href="/register">Create your inbox →</a>
+            </article>
+          </div>
+        </section>
+
+        <section className="landing-section" aria-label="Security model">
+          <div className="landing-head">
+            <p className="eyebrow">Security</p>
+            <h2>What we can and cannot see</h2>
+            <p>CryptoBin is intentionally dumb about your data — that is the point.</p>
+          </div>
+          <ul className="trust-list">
+            <li>
+              <span className="trust-bullet" aria-hidden="true">✓</span>
+              <div>
+                <strong>Encrypted in the browser</strong>
+                AES-256-GCM for share links; RSA-OAEP + AES-GCM for inbox drops. Plaintext
+                never hits our API.
+              </div>
+            </li>
+            <li>
+              <span className="trust-bullet" aria-hidden="true">✓</span>
+              <div>
+                <strong>Fragment keys stay local</strong>
+                Share-link decryption keys live after the <code>#</code> in the URL. Servers
+                and logs never receive them.
+              </div>
+            </li>
+            <li>
+              <span className="trust-bullet" aria-hidden="true">✓</span>
+              <div>
+                <strong>Optional 2FA on accounts</strong>
+                Inbox owners can enable TOTP. Your master password unlocks your private key
+                client-side — we store only a bcrypt hash.
+              </div>
+            </li>
+            <li>
+              <span className="trust-bullet" aria-hidden="true">!</span>
+              <div>
+                <strong>You still need a safe channel</strong>
+                Send the link itself over a channel you trust. CryptoBin protects the secret
+                at rest, not who you share the link with.
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <footer className="site-footer">
+          <p>
+            <Zap size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 6, color: 'var(--accent)' }} aria-hidden="true" />
+            CryptoBin — zero-knowledge secret exchange.
+            {' '}
+            <a href="/register">Get an inbox</a>
+            {' · '}
+            <a href="/login">Log in</a>
+          </p>
+        </footer>
       </div>
     </div>
   );
