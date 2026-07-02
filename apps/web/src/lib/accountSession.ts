@@ -1,4 +1,5 @@
 import { clearUnlockedSharedInboxKeys } from './sharedInboxSession';
+import type { EncryptedVaultSecret } from './vaultCrypto';
 
 export interface AccountUser {
   id: string;

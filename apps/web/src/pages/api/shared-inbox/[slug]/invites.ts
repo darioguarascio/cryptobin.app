@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '@/db';
-import { sharedInboxInvites, sharedInboxMembers, users } from '@/db/schema';
+import { sharedInboxInvites, sharedInboxMembers } from '@/db/schema';
 import { normalizeHandle } from '@/lib/handles';
 import { INBOX_ALGORITHM } from '@/lib/inboxCrypto';
 import { getSessionUser } from '@/lib/server/auth';

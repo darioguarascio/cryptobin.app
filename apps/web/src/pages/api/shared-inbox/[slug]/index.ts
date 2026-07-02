@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { and, desc, eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { sharedInboxDrops, sharedInboxMembers, sharedInboxes, users } from '@/db/schema';
+import { sharedInboxDrops, sharedInboxMembers, users } from '@/db/schema';
 import { normalizeHandle } from '@/lib/handles';
 import { getSessionUser } from '@/lib/server/auth';
 import { requireSharedInboxMember } from '@/lib/server/sharedInboxAccess';

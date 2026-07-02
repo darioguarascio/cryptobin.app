@@ -1,7 +1,4 @@
 import type { APIRoute } from 'astro';
-import { eq } from 'drizzle-orm';
-import { getDb } from '@/db';
-import { sharedInboxes } from '@/db/schema';
 import { normalizeHandle } from '@/lib/handles';
 import { getSharedInboxBySlug } from '@/lib/server/sharedInboxAccess';
 
