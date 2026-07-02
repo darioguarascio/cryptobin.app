@@ -1,0 +1,36 @@
+---
+import SharedInboxDrop from '@/components/SharedInboxDrop';
+import InboxNotFound from '@/components/InboxNotFound';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { eq } from 'drizzle-orm';
+import { getDb } from '@/db';
+import { sharedInboxes } from '@/db/schema';
+import { normalizeHandle } from '@/lib/handles';
+
+const { slug: rawSlug } = Astro.params;
+const slug = normalizeHandle(rawSlug ?? '');
+
+let inbox: { slug: string; name: string } | null = null;
+
+if (slug) {
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ slug: sharedInboxes.slug, name: sharedInboxes.name })
+      .from(sharedInboxes)
+      .where(eq(sharedInboxes.slug, slug))
+      .limit(1);
+    inbox = row ?? null;
+  } catch {
+    inbox = null;
+  }
+}
+---
+
+<BaseLayout title={inbox ? `Shared inbox: ${inbox.name}` : 'Shared inbox not found'}>
+  {inbox ? (
+    <SharedInboxDrop client:load slug={inbox.slug} name={inbox.name} />
+  ) : (
+    <InboxNotFound client:load handle={slug || 'unknown'} kind="shared" />
+  )}
+</BaseLayout>

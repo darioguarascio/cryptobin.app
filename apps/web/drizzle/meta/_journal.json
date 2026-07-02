@@ -8,6 +8,13 @@
       "when": 1751443200000,
       "tag": "0000_inbox_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1751529600000,
+      "tag": "0001_shared_inboxes",
+      "breakpoints": true
     }
   ]
 }

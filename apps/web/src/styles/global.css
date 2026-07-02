@@ -791,7 +791,7 @@ input:focus {
 .mode-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .mode-card {
@@ -885,6 +885,64 @@ input:focus {
 
 .site-footer a:hover {
   text-decoration: underline;
+}
+
+.shared-inbox-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.shared-toolbar,
+.shared-detail-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.shared-create-form,
+.shared-invite-form,
+.shared-invites,
+.shared-members,
+.shared-drops {
+  display: grid;
+  gap: 12px;
+}
+
+.shared-member-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shared-member-list li {
+  align-items: center;
+  background: var(--chip-btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.shared-invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.shared-detail-head h3,
+.shared-members h4,
+.shared-drops h4,
+.shared-invites h3 {
+  color: var(--heading);
+  margin: 0 0 4px;
 }
 
 /* ── Receive page ──────────────────────────────────────────── */

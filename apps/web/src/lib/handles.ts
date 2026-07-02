@@ -2,6 +2,7 @@ export const RESERVED_HANDLES = new Set([
   'admin',
   'api',
   'app',
+  'i',
   'inbox',
   'login',
   'register',

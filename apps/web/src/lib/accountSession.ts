@@ -1,4 +1,4 @@
-import type { EncryptedVaultSecret } from './vaultCrypto';
+import { clearUnlockedSharedInboxKeys } from './sharedInboxSession';
 
 export interface AccountUser {
   id: string;
@@ -16,6 +16,7 @@ export function setAccountUser(user: AccountUser | null): void {
   currentUser = user;
   if (!user) {
     unlockedPrivateKeyPkcs8 = null;
+    clearUnlockedSharedInboxKeys();
   }
 }
 
@@ -52,6 +53,7 @@ export async function logoutAccount(): Promise<void> {
   await fetch('/api/auth/logout', { method: 'POST' });
   setAccountUser(null);
   setUnlockedPrivateKey(null);
+  clearUnlockedSharedInboxKeys();
 }
 
 export function inboxShareUrl(origin: string, handle: string): string {

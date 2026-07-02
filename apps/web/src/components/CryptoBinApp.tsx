@@ -1,4 +1,4 @@
-import { CheckCircle, ChevronDown, Eye, Inbox, KeyRound, Link2, Lock, Plus, Send, ShieldCheck, Timer, Trash2, Zap } from 'lucide-react';
+import { CheckCircle, ChevronDown, Eye, Inbox, KeyRound, Link2, Lock, Plus, Send, ShieldCheck, Timer, Trash2, Users, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { buildShareUrl, encryptSecret } from '@/lib/crypto';
 import CipherHeroCanvas from './CipherHeroCanvas';
@@ -313,8 +313,8 @@ export default function CryptoBinApp() {
 
         <section className="landing-section" aria-label="Two ways to share">
           <div className="landing-head">
-            <p className="eyebrow">Two modes</p>
-            <h2>One-time link or standing inbox</h2>
+            <p className="eyebrow">Three ways to share</p>
+            <h2>One-time link, personal inbox, or shared team inbox</h2>
             <p>Use the right tool for the moment — both run the same client-side crypto.</p>
           </div>
           <div className="mode-grid">
@@ -326,6 +326,15 @@ export default function CryptoBinApp() {
                 the ciphertext is gone after that single view.
               </p>
               <a href="#top">Create a link ↑</a>
+            </article>
+            <article className="mode-card">
+              <span className="feature-card-icon" aria-hidden="true"><Users size={18} /></span>
+              <h3>Shared team inbox</h3>
+              <p>
+                Create `/i/your-team` and invite members. Each drop encrypts to a shared inbox key;
+                every member decrypts with their own account.
+              </p>
+              <a href="/app/inbox">Manage shared inboxes →</a>
             </article>
             <article className="mode-card">
               <span className="feature-card-icon" aria-hidden="true"><Inbox size={18} /></span>

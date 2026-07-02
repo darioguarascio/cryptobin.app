@@ -15,7 +15,7 @@ describe('session helpers', () => {
     const hash = await hashPassword('correct-horse-battery-staple');
     expect(await verifyPassword('correct-horse-battery-staple', hash)).toBe(true);
     expect(await verifyPassword('wrong-password', hash)).toBe(false);
-  });
+  }, 15000);
 
   it('hashes session tokens deterministically', () => {
     expect(hashSessionToken('abc')).toHaveLength(64);

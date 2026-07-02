@@ -1,4 +1,4 @@
-import { boolean, index, jsonb, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { boolean, index, jsonb, pgTable, primaryKey, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable(
   'users',
@@ -72,3 +72,88 @@ export const vaultEntries = pgTable(
 export type User = typeof users.$inferSelect;
 export type InboxDrop = typeof inboxDrops.$inferSelect;
 export type VaultEntry = typeof vaultEntries.$inferSelect;
+
+export const sharedInboxes = pgTable(
+  'shared_inboxes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull().unique(),
+    name: varchar('name', { length: 120 }).notNull(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    publicKey: text('public_key').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('shared_inboxes_slug_idx').on(table.slug)],
+);
+
+export const sharedInboxMembers = pgTable(
+  'shared_inbox_members',
+  {
+    inboxId: uuid('inbox_id')
+      .notNull()
+      .references(() => sharedInboxes.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: varchar('role', { length: 16 }).notNull().default('member'),
+    wrappedPrivateKey: jsonb('wrapped_private_key').notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.inboxId, table.userId] }),
+    index('shared_inbox_members_user_id_idx').on(table.userId),
+    index('shared_inbox_members_inbox_id_idx').on(table.inboxId),
+  ],
+);
+
+export const sharedInboxInvites = pgTable(
+  'shared_inbox_invites',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    inboxId: uuid('inbox_id')
+      .notNull()
+      .references(() => sharedInboxes.id, { onDelete: 'cascade' }),
+    inviteeHandle: varchar('invitee_handle', { length: 64 }).notNull(),
+    inviteeId: uuid('invitee_id').references(() => users.id, { onDelete: 'cascade' }),
+    invitedBy: uuid('invited_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    wrappedPrivateKey: jsonb('wrapped_private_key').notNull(),
+    status: varchar('status', { length: 16 }).notNull().default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index('shared_inbox_invites_invitee_id_idx').on(table.inviteeId, table.status),
+    index('shared_inbox_invites_inbox_id_idx').on(table.inboxId),
+  ],
+);
+
+export const sharedInboxDrops = pgTable(
+  'shared_inbox_drops',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    inboxId: uuid('inbox_id')
+      .notNull()
+      .references(() => sharedInboxes.id, { onDelete: 'cascade' }),
+    algorithm: varchar('algorithm', { length: 32 }).notNull(),
+    iv: text('iv').notNull(),
+    ciphertext: text('ciphertext').notNull(),
+    wrappedKey: text('wrapped_key').notNull(),
+    metadataPreview: jsonb('metadata_preview').$type<{
+      from?: string;
+      label?: string;
+      description?: string;
+    }>(),
+    readBy: jsonb('read_by').$type<Record<string, string>>().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('shared_inbox_drops_inbox_id_idx').on(table.inboxId)],
+);
+
+export type SharedInbox = typeof sharedInboxes.$inferSelect;
+export type SharedInboxMember = typeof sharedInboxMembers.$inferSelect;
+export type SharedInboxInvite = typeof sharedInboxInvites.$inferSelect;
+export type SharedInboxDrop = typeof sharedInboxDrops.$inferSelect;

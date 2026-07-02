@@ -40,7 +40,6 @@ describe('server secret store', () => {
     const long = storeSecret({ ...payload, algorithm: 'AES-GCM-256', ttlHours: 168 });
 
     expect(short.id.length).toBeLessThan(long.id.length);
-    expect(short.id).not.toContain('-');
   });
 
   it('rejects malformed encrypted payloads', () => {

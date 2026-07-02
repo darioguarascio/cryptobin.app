@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Clipboard, Eye, Inbox, Lock, LogOut, Save, Shield, Trash2, Vault } from 'lucide-react';
+import { Clipboard, Eye, Inbox, Lock, LogOut, Save, Shield, Trash2, Users, Vault } from 'lucide-react';
 import AuthPanel from './AuthPanel';
 import {
   fetchCurrentUser,
@@ -18,6 +18,7 @@ import type { EncryptedVaultSecret } from '@/lib/vaultCrypto';
 import CipherHeroCanvas from './CipherHeroCanvas';
 import CopyButton from './CopyButton';
 import ThemeSwitcher from './ThemeSwitcher';
+import SharedInboxPanel from './SharedInboxPanel';
 
 interface InboxListItem {
   id: string;
@@ -32,7 +33,7 @@ interface VaultListItem {
   createdAt: string;
 }
 
-type AppTab = 'inbox' | 'vault' | 'security';
+type AppTab = 'inbox' | 'shared' | 'vault' | 'security';
 
 export default function AccountApp() {
   const [user, setUser] = useState<AccountUser | null>(getAccountUser());
@@ -313,6 +314,9 @@ export default function AccountApp() {
             <button type="button" className={tab === 'inbox' ? 'active' : ''} onClick={() => setTab('inbox')}>
               <Inbox size={16} /> Inbox
             </button>
+            <button type="button" className={tab === 'shared' ? 'active' : ''} onClick={() => setTab('shared')}>
+              <Users size={16} /> Shared
+            </button>
             <button type="button" className={tab === 'vault' ? 'active' : ''} onClick={() => setTab('vault')}>
               <Vault size={16} /> Vault
             </button>
@@ -424,6 +428,10 @@ export default function AccountApp() {
                   )}
                 </div>
               </div>
+            )}
+
+            {tab === 'shared' && user && (
+              <SharedInboxPanel user={user} />
             )}
 
             {tab === 'vault' && (
