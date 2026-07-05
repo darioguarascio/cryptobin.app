@@ -5,6 +5,6 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 const { id } = Astro.params;
 ---
 
-<BaseLayout title="CryptoBin secret">
+<BaseLayout title="Encrypted secret" noIndex>
   <SecretReceivePage client:load secretId={id ?? ''} />
 </BaseLayout>

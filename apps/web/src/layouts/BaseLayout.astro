@@ -3,9 +3,10 @@ import '../styles/global.css';
 
 interface Props {
   title?: string;
+  noIndex?: boolean;
 }
 
-const { title = 'CryptoBin' } = Astro.props;
+const { title = 'CryptoBin', noIndex = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -13,6 +14,12 @@ const { title = 'CryptoBin' } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content="Zero-knowledge secret exchange for one-time links and inbox drops." />
+    {noIndex && (
+      <>
+        <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+        <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet" />
+      </>
+    )}
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -30,6 +37,12 @@ const { title = 'CryptoBin' } = Astro.props;
         document.documentElement.style.colorScheme = theme;
       })();
     </script>
+    <script
+      is:inline
+      src="https://t.surl.it/api/script.js"
+      data-site-id="9"
+      defer
+    ></script>
   </head>
   <body>
     <slot />

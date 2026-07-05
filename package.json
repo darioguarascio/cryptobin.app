@@ -3,14 +3,18 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/web"
+    "apps/web",
+    "packages/cli"
   ],
   "scripts": {
     "dev": "npm --workspace @cryptobin/web run dev",
     "build": "npm --workspace @cryptobin/web run build",
     "preview": "npm --workspace @cryptobin/web run preview",
-    "test": "npm --workspace @cryptobin/web run test",
-    "test:coverage": "npm --workspace @cryptobin/web run test:coverage",
+    "test": "npm --workspace @cryptobin/web run test && npm --workspace @cryptobin/cli run test && node --test scripts/install.test.mjs",
+    "test:coverage": "npm --workspace @cryptobin/web run test:coverage && npm --workspace @cryptobin/cli run test:coverage",
+    "cli": "npm --workspace @cryptobin/cli run dev",
+    "cli:build": "npm --workspace @cryptobin/cli run build",
+    "cli:install": "curl -fsSL https://cryptobin.app/install.sh | sh",
     "db:generate": "npm --workspace @cryptobin/web run db:generate",
     "db:migrate": "npm --workspace @cryptobin/web run db:migrate"
   },

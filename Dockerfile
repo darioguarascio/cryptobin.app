@@ -3,6 +3,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/
+COPY packages/cli/package.json packages/cli/
 RUN npm ci
 
 FROM node:22-alpine AS build
@@ -22,6 +23,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/
+COPY packages/cli/package.json packages/cli/
 RUN npm ci --omit=dev
 
 FROM node:22-alpine AS runner
@@ -39,6 +41,7 @@ COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/apps/web/package.json ./apps/web/
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/apps/web/public ./apps/web/public
+COPY --from=build /app/scripts/install.sh ./apps/web/public/install.sh
 COPY --from=build /app/apps/web/drizzle ./apps/web/drizzle
 COPY --from=build /app/apps/web/scripts/migrate.mjs ./apps/web/scripts/migrate.mjs
 

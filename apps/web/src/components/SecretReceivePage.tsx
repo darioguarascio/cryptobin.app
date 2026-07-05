@@ -98,7 +98,8 @@ export default function SecretReceivePage({ secretId }: SecretReceivePageProps) 
               <div className="receive-reveal">
                 <p className="receive-reveal-copy">
                   Someone sent you a one-time encrypted message. Reveal it only when you are
-                  ready — opening it permanently deletes it from the server.
+                  ready — opening it permanently deletes it from the server. Nothing is fetched
+                  until you click, so chat link previews and crawlers cannot read or consume it.
                 </p>
                 <div className="receive-warning" role="note">
                   <AlertTriangle size={18} aria-hidden="true" />
@@ -162,8 +163,9 @@ export default function SecretReceivePage({ secretId }: SecretReceivePageProps) 
           <section className="receive-card receive-about">
             <h2>About CryptoBin</h2>
             <p>
-              Each secret is a one-time link. Nothing is fetched until you choose to reveal it.
-              After that, it is permanently deleted from the server.
+              Each secret is a one-time link. Nothing is fetched until you choose to reveal it,
+              which keeps automated link previews from reading or burning the secret. After
+              that, it is permanently deleted from the server.
             </p>
             <p>
               Everything is encrypted and decrypted in your browser. The decryption key lives
