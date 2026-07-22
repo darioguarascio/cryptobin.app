@@ -17,13 +17,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for Test workflow on this commit
-        uses: lewagon/wait-on-check-action@v1.8.1
-        with:
-          ref: ${{ github.sha }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          running-workflow-name: Test
-          allowed-conclusions: success
-          wait-interval: 15
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          for attempt in $(seq 1 40); do
+            json="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow Test --commit "${GITHUB_SHA}" --json status,conclusion 2>/dev/null || echo '[]')"
+            count="$(printf '%s' "$json" | jq 'length')"
+            if [ "$count" -eq 0 ]; then
+              echo "No Test runs yet for ${GITHUB_SHA}; waiting…"
+              sleep 15
+              continue
+            fi
+            pending="$(printf '%s' "$json" | jq '[.[] | select(.status != "completed")] | length')"
+            failed="$(printf '%s' "$json" | jq '[.[] | select(.status == "completed" and .conclusion != "success")] | length')"
+            if [ "$failed" -gt 0 ]; then
+              echo "Test workflow failed for ${GITHUB_SHA}"
+              gh run list --repo "${GITHUB_REPOSITORY}" --workflow Test --commit "${GITHUB_SHA}"
+              exit 1
+            fi
+            if [ "$pending" -eq 0 ]; then
+              echo "All Test workflows succeeded for ${GITHUB_SHA}"
+              exit 0
+            fi
+            echo "Waiting for ${pending} Test run(s)…"
+            sleep 15
+          done
+          echo "Timed out waiting for Test workflow on ${GITHUB_SHA}"
+          exit 1
 
   build:
     name: Build Docker image
