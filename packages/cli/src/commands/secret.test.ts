@@ -27,4 +27,9 @@ describe('buildCreateOptions', () => {
     expect(buildCreateOptions('x', { quiet: false }, true).quiet).toBe(false);
     expect(buildCreateOptions('x', { json: true }, true).quiet).toBe(false);
   });
+
+  it('disables auto-quiet when verbose is set', () => {
+    expect(buildCreateOptions('x', { verbose: true }, true).quiet).toBe(false);
+    expect(buildCreateOptions('x', { verbose: true }, true).verbose).toBe(true);
+  });
 });

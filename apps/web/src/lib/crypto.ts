@@ -1,4 +1,5 @@
 import { base64UrlToBytes, bytesToBase64Url, bytesToString, stringToBytes } from './encoding';
+import { assertSecretWithinLimit } from './secretLimits';
 import { shareLinkProfileForTtlHours, type ShareCipherAlgorithm } from './shareLink';
 
 export type { ShareLinkProfile } from './shareLink';
@@ -43,6 +44,7 @@ export async function encryptSecret(
   payload: EncryptedSecretPayload;
   key: string;
 }> {
+  assertSecretWithinLimit(secret.body);
   const profile = shareLinkProfileForTtlHours(ttlHours);
   const key = await crypto.subtle.generateKey(
     { name: AES_GCM, length: profile.keyBits },

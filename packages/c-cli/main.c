@@ -1,12 +1,43 @@
 #include "cryptobin.h"
 
 #include <getopt.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 static const char *VERSION = "0.1.0";
+static int cli_verbose = 0;
+
+static void vlog(const char *fmt, ...) {
+  if (!cli_verbose) {
+    return;
+  }
+  va_list ap;
+  va_start(ap, fmt);
+  fputs("→ ", stderr);
+  vfprintf(stderr, fmt, ap);
+  fputc('\n', stderr);
+  va_end(ap);
+}
+
+static int argv_is_verbose_flag(const char *arg) {
+  return arg && (strcmp(arg, "-v") == 0 || strcmp(arg, "--verbose") == 0);
+}
+
+static int shift_verbose_flags(int argc, char **argv) {
+  int write = 1;
+  for (int read = 1; read < argc; read++) {
+    if (argv_is_verbose_flag(argv[read])) {
+      cli_verbose = 1;
+      continue;
+    }
+    argv[write++] = argv[read];
+  }
+  argv[write] = NULL;
+  return write;
+}
 
 static void usage(const char *argv0) {
   fprintf(stderr, "CryptoBin C CLI %s\n\n", VERSION);
@@ -22,13 +53,14 @@ static void usage(const char *argv0) {
   fprintf(stderr, "      --label TEXT     Optional label metadata\n");
   fprintf(stderr, "      --description TEXT\n");
   fprintf(stderr, "      -q, --quiet      Print only the share URL\n");
+  fprintf(stderr, "  -v, --verbose        Print progress to stderr (repeatable before command)\n");
   fprintf(stderr, "\nExamples:\n");
   fprintf(stderr, "  %s secret \"rotate-this-key\"\n", argv0);
   fprintf(stderr, "  echo token | %s secret\n", argv0);
 }
 
 static char *read_stdin_all(void) {
-  size_t cap = 4096;
+  size_t cap = 65536;
   size_t len = 0;
   char *buf = malloc(cap);
   if (!buf) {
@@ -36,19 +68,27 @@ static char *read_stdin_all(void) {
   }
 
   while (1) {
-    size_t n = fread(buf + len, 1, cap - len - 1, stdin);
-    len += n;
-    if (n == 0) {
-      break;
-    }
     if (len + 1 >= cap) {
-      cap *= 2;
-      char *next = realloc(buf, cap);
+      if (cap >= CRYPTOBIN_MAX_SECRET + 1) {
+        free(buf);
+        return NULL;
+      }
+      size_t next_cap = cap * 2;
+      if (next_cap > CRYPTOBIN_MAX_SECRET + 1) {
+        next_cap = CRYPTOBIN_MAX_SECRET + 1;
+      }
+      char *next = realloc(buf, next_cap);
       if (!next) {
         free(buf);
         return NULL;
       }
       buf = next;
+      cap = next_cap;
+    }
+    size_t n = fread(buf + len, 1, cap - len - 1, stdin);
+    len += n;
+    if (n == 0) {
+      break;
     }
   }
 
@@ -56,6 +96,10 @@ static char *read_stdin_all(void) {
     len--;
   }
   buf[len] = '\0';
+  if (len > CRYPTOBIN_MAX_SECRET) {
+    free(buf);
+    return NULL;
+  }
   return buf;
 }
 
@@ -78,13 +122,14 @@ static int run_secret(int argc, char **argv, int start, int quiet_default) {
     {"label", required_argument, NULL, 'l'},
     {"description", required_argument, NULL, 'd'},
     {"quiet", no_argument, NULL, 'q'},
+    {"verbose", no_argument, NULL, 'v'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0},
   };
 
   optind = start;
   int ch;
-  while ((ch = getopt_long(argc, argv, "u:t:f:l:d:qh", long_opts, NULL)) != -1) {
+  while ((ch = getopt_long(argc, argv, "u:t:f:l:d:qvh", long_opts, NULL)) != -1) {
     switch (ch) {
       case 'u':
         opts.base_url = optarg;
@@ -103,6 +148,9 @@ static int run_secret(int argc, char **argv, int start, int quiet_default) {
         break;
       case 'q':
         quiet = 1;
+        break;
+      case 'v':
+        cli_verbose = 1;
         break;
       case 'h':
         usage(argv[0]);
@@ -124,6 +172,10 @@ static int run_secret(int argc, char **argv, int start, int quiet_default) {
   if (!body) {
     if (!isatty(STDIN_FILENO)) {
       stdin_body = read_stdin_all();
+      if (!stdin_body) {
+        fprintf(stderr, "error: secret is too large (max 4 MiB) or could not read stdin\n");
+        return 1;
+      }
       body = stdin_body;
     } else {
       fprintf(stderr, "error: pass secret text, pipe via stdin, or use --help\n");
@@ -137,8 +189,17 @@ static int run_secret(int argc, char **argv, int start, int quiet_default) {
     return 1;
   }
 
+  vlog("Secret size: %zu bytes", strlen(body));
+  char preview_url[CRYPTOBIN_MAX_URL];
+  if (resolve_base_url(opts.base_url, preview_url, sizeof(preview_url)) == 0) {
+    vlog("Server: %s", preview_url);
+  }
+  vlog("TTL: %d hour(s)", opts.ttl_hours);
+  vlog("Encrypting locally…");
+
   secret_result_t result;
   char err[512];
+  vlog("Uploading ciphertext…");
   if (encrypt_and_upload_secret(body, &opts, &result, err, sizeof(err)) != 0) {
     fprintf(stderr, "error: %s\n", err);
     free(stdin_body);
@@ -146,6 +207,7 @@ static int run_secret(int argc, char **argv, int start, int quiet_default) {
   }
 
   free(stdin_body);
+  vlog("Share id: %s", result.id);
   (void)quiet;
   printf("%s\n", result.url);
   return 0;
@@ -202,6 +264,8 @@ static int run_config(int argc, char **argv, int start) {
 }
 
 int main(int argc, char **argv) {
+  argc = shift_verbose_flags(argc, argv);
+
   if (argc >= 2 && (strcmp(argv[1], "-V") == 0 || strcmp(argv[1], "--version") == 0)) {
     printf("cryptobin %s (C)\n", VERSION);
     return 0;

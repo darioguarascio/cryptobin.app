@@ -6,6 +6,9 @@ import {
   readSecretBody,
   type CreateSecretInput,
 } from '../lib/createSecret.js';
+import { secretByteLength } from '../lib/secretLimits.js';
+import { formatByteCount, writeVerbose } from '../lib/verbose.js';
+import { resolveConfiguredBaseUrl } from '../config.js';
 import { banner, formatTtl, icons, successPanel, ttlOptions } from '../ui/theme.js';
 
 export type { CreateSecretInput, CreateSecretResult } from '../lib/createSecret.js';
@@ -15,6 +18,7 @@ export interface CreateOptions extends CreateSecretInput {
   ttl?: number;
   json?: boolean;
   quiet?: boolean;
+  verbose?: boolean;
   interactive?: boolean;
 }
 
@@ -122,11 +126,23 @@ export async function createShareLink(
         ttlHours: parseTtlHours(options.ttl),
       };
 
-  const showUi = !options.json && !options.quiet && process.stdin.isTTY;
+  if (options.verbose && !process.stdin.isTTY && !options.secret && !options.file) {
+    writeVerbose(true, 'Read secret from stdin');
+  }
+
+  writeVerbose(options.verbose, `Secret size: ${formatByteCount(secretByteLength(details.secret))}`);
+
+  const baseUrl = await resolveConfiguredBaseUrl(options.url);
+  writeVerbose(options.verbose, `Server: ${baseUrl}`);
+  writeVerbose(options.verbose, `TTL: ${details.ttlHours} hour(s)`);
+  writeVerbose(options.verbose, 'Encrypting locally…');
+
+  const showUi = !options.json && !options.quiet && !options.verbose && process.stdin.isTTY;
   const spin = showUi ? spinner() : null;
 
   spin?.start(`${icons.key} Generating encryption key`);
   spin?.message(`${icons.lock} Encrypting locally`);
+  writeVerbose(options.verbose, 'Uploading ciphertext…');
   spin?.message(`${icons.rocket} Uploading ciphertext`);
 
   const result = await createEncryptedShareLink(
@@ -142,6 +158,8 @@ export async function createShareLink(
   );
 
   spin?.stop(`${pc.green(icons.check)} Encrypted and stored`);
+  writeVerbose(options.verbose, `Stored id: ${result.id}`);
+  writeVerbose(options.verbose, `Expires: ${result.expiresAt}`);
 
   if (options.json) {
     return result;

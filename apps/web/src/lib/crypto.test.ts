@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildShareUrl, decryptSecret, encryptSecret, parseShareUrl } from './crypto';
+import { MAX_SECRET_BYTES } from './secretLimits';
 
 describe('secret crypto', () => {
   it('encrypts and decrypts a secret with metadata', async () => {
@@ -73,5 +74,11 @@ describe('secret crypto', () => {
   it('rejects URLs without a path id or fragment key', () => {
     expect(parseShareUrl({ pathname: '/s/secret-id', hash: '' })).toBeNull();
     expect(parseShareUrl({ pathname: '/', hash: '#key-part' })).toBeNull();
+  });
+
+  it('rejects secrets larger than 4 MiB', async () => {
+    await expect(
+      encryptSecret({ body: 'x'.repeat(MAX_SECRET_BYTES + 1), metadata: {} }),
+    ).rejects.toThrow(/4 MiB/);
   });
 });

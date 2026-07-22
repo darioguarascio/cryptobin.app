@@ -43,6 +43,7 @@ export async function run(argv: string[] = process.argv): Promise<void> {
   program
     .name('cryptobin')
     .description(`${brandGradient('CryptoBin')} — create encrypted one-time share links`)
+    .option('-v, --verbose', 'Print progress and upload details to stderr')
     .version(readPackageVersion(), '-V, --version', 'Show version');
 
   registerSecretCommand(program, 'secret', 'Encrypt a secret and print a one-time share URL');

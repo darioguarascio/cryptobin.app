@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolveConfiguredBaseUrl } from '../config.js';
+import { assertSecretWithinLimit, MAX_SECRET_BYTES, MAX_SECRET_MIB } from './secretLimits.js';
 import { storeEncryptedSecret } from './api.js';
 import { buildShareUrl, encryptSecret } from './crypto.js';
 
@@ -30,22 +31,34 @@ export function parseTtlHours(value: number | undefined): number {
   return value;
 }
 
+function finalizeSecretBody(raw: string): string {
+  const trimmed = raw.replace(/\r?\n$/, '');
+  assertSecretWithinLimit(trimmed);
+  return trimmed;
+}
+
 export async function readSecretBody(input: Pick<CreateSecretInput, 'secret' | 'file'>): Promise<string> {
   if (input.secret !== undefined) {
-    return input.secret;
+    return finalizeSecretBody(input.secret);
   }
 
   if (input.file) {
     const contents = await readFile(input.file, 'utf8');
-    return contents.replace(/\r?\n$/, '');
+    return finalizeSecretBody(contents);
   }
 
   if (!process.stdin.isTTY) {
     const chunks: Buffer[] = [];
+    let total = 0;
     for await (const chunk of process.stdin) {
-      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+      total += buf.length;
+      if (total > MAX_SECRET_BYTES + 1) {
+        throw new Error(`Secret is too large (max ${MAX_SECRET_MIB} MiB).`);
+      }
+      chunks.push(buf);
     }
-    return Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/, '');
+    return finalizeSecretBody(Buffer.concat(chunks).toString('utf8'));
   }
 
   return '';

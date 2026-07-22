@@ -54,4 +54,11 @@ describe('createEncryptedShareLink', () => {
       createEncryptedShareLink({ secret: '   ', ttlHours: 24 }),
     ).rejects.toThrow('Secret cannot be empty');
   });
+
+  it('rejects secrets over 4 MiB', async () => {
+    const { MAX_SECRET_BYTES } = await import('./secretLimits.js');
+    await expect(
+      readSecretBody({ secret: 'x'.repeat(MAX_SECRET_BYTES + 1) }),
+    ).rejects.toThrow(/4 MiB/);
+  });
 });

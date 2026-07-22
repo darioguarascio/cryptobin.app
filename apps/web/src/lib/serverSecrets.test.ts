@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { MAX_CIPHERTEXT_B64_LENGTH } from './secretLimits';
 import { clearExpiredSecrets, clearSecretsForTest, consumeSecret, storeSecret } from './serverSecrets';
 
 const payload = {
@@ -49,6 +50,16 @@ describe('server secret store', () => {
         algorithm: 'AES-GCM-256',
         iv: 'short',
         ciphertext: 'also-short',
+        ttlHours: 24,
+      }),
+    ).toThrow();
+  });
+
+  it('rejects ciphertext larger than the 4 MiB plaintext limit allows', () => {
+    expect(() =>
+      storeSecret({
+        ...payload,
+        ciphertext: 'a'.repeat(MAX_CIPHERTEXT_B64_LENGTH + 1),
         ttlHours: 24,
       }),
     ).toThrow();

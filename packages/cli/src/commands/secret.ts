@@ -12,6 +12,7 @@ export interface SecretCommandOptions {
   url?: string;
   json?: boolean;
   quiet?: boolean;
+  verbose?: boolean;
   interactive?: boolean;
 }
 
@@ -29,7 +30,8 @@ export function buildCreateOptions(
     ttl: opts.ttl,
     url: opts.url,
     json: opts.json,
-    quiet: opts.quiet ?? (quietWhenArg && Boolean(secret) && !opts.json),
+    quiet: opts.quiet ?? (quietWhenArg && Boolean(secret) && !opts.json && !opts.verbose),
+    verbose: opts.verbose,
     interactive: opts.interactive,
   };
 }
@@ -54,10 +56,15 @@ export function registerSecretCommand(
     .option('-u, --url <base>', 'CryptoBin server base URL')
     .option('--json', 'Print machine-readable JSON')
     .option('-q, --quiet', 'Print only the share URL')
+    .option('-v, --verbose', 'Print progress and upload details to stderr')
     .option('--no-interactive', 'Skip prompts (requires secret, file, or stdin)')
     .action(async (secret: string | undefined, opts: SecretCommandOptions) => {
       try {
-        await runCreateCommand(buildCreateOptions(secret, opts, quietWhenArg));
+        const globalVerbose = program.opts<{ verbose?: boolean }>().verbose;
+        const verbose = Boolean(opts.verbose || globalVerbose);
+        await runCreateCommand({
+          ...buildCreateOptions(secret, { ...opts, verbose }, quietWhenArg),
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Something went wrong.';
         console.error(`${pc.red(icons.warn)} ${message}`);

@@ -85,6 +85,51 @@ c_cli_build_hint() {
   say "${DIM}macOS:${RESET} xcode-select --install  ·  brew install curl openssl"
 }
 
+read_cli_package_version() {
+  pkg="$TMP/packages/cli/package.json"
+  if [ ! -f "$pkg" ]; then
+    return 1
+  fi
+  if command -v node >/dev/null 2>&1; then
+    node -p "require('${pkg}').version" 2>/dev/null && return 0
+  fi
+  sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$pkg" | head -n 1
+}
+
+cli_version_string() {
+  bin="$1"
+  line=""
+
+  if [ -z "$bin" ] || [ ! -x "$bin" ]; then
+    return 1
+  fi
+
+  line="$("$bin" -V 2>/dev/null | head -n 1 || true)"
+  if [ -n "$line" ]; then
+    printf '%s' "$line"
+    return 0
+  fi
+
+  line="$("$bin" --version 2>/dev/null | head -n 1 || true)"
+  if [ -n "$line" ]; then
+    printf '%s' "$line"
+    return 0
+  fi
+
+  return 1
+}
+
+format_installed_version() {
+  cli_line="$1"
+  pkg_version="$2"
+  ref="$3"
+  if [ -n "$cli_line" ]; then
+    printf '%s · package %s · source %s' "$cli_line" "$pkg_version" "$ref"
+  else
+    printf 'package %s · source %s' "$pkg_version" "$ref"
+  fi
+}
+
 install_prefix() {
   if [ -n "${CRYPTOBIN_PREFIX:-}" ]; then
     printf '%s' "$CRYPTOBIN_PREFIX"
@@ -130,7 +175,7 @@ print_quick_start() {
   say "${DIM}Other commands:${RESET} cryptobin create (alias) · cryptobin config show · cryptobin --help"
   say "${DIM}Force Node CLI:${RESET} CRYPTOBIN_CLI=node … · ${DIM}Force C CLI:${RESET} CRYPTOBIN_CLI=c …"
   say ""
-  say "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.6.2 curl -fsSL ${INSTALL_URL}/install.sh | sh"
+  say "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.6.3 curl -fsSL ${INSTALL_URL}/install.sh | sh"
   say ""
 }
 
@@ -159,8 +204,8 @@ install_c_cli() {
   fi
 
   BIN="$bindir/cryptobin"
-  VERSION="$("$BIN" --version 2>/dev/null | head -n 1 || true)"
-  success "Installed cryptobin ${VERSION} → ${BIN}"
+  CLI_VERSION="$(cli_version_string "$BIN" || true)"
+  success "Installed cryptobin $(format_installed_version "$CLI_VERSION" "$PKG_VERSION" "$REF") → ${BIN}"
   path_hint
   print_quick_start
   return 0
@@ -204,8 +249,8 @@ install_node_cli() {
     die "cryptobin was installed but is not on PATH. Add your npm global bin directory to PATH."
   fi
 
-  VERSION="$(cryptobin -V 2>/dev/null | head -n 1 || cryptobin --version 2>/dev/null | head -n 1 || true)"
-  success "Installed cryptobin ${VERSION} → ${BIN}"
+  CLI_VERSION="$(cli_version_string "$BIN" || true)"
+  success "Installed cryptobin $(format_installed_version "$CLI_VERSION" "$PKG_VERSION" "$REF") → ${BIN}"
   print_quick_start
 }
 
@@ -221,15 +266,21 @@ trap cleanup EXIT INT TERM
 say ""
 say "${BOLD}CryptoBin CLI installer${RESET}"
 say ""
-info "Source ${REPO}@${REF}"
+info "Release ref ${REF}"
 info "Default server ${INSTALL_URL}"
 info "Installer mode ${CRYPTOBIN_CLI}"
 
 ARCHIVE="https://github.com/${REPO}/archive/${REF}.tar.gz"
 info "Downloading source archive…"
 if ! curl -fsSL "$ARCHIVE" | tar -xz -C "$TMP" --strip-components=1; then
-  die "Could not download ${ARCHIVE}. Set CRYPTOBIN_VERSION to a tag (e.g. v0.6.2) or branch name."
+  die "Could not download ${ARCHIVE}. Set CRYPTOBIN_VERSION to a tag (e.g. v0.6.3) or branch name."
 fi
+
+PKG_VERSION="$(read_cli_package_version || true)"
+if [ -z "$PKG_VERSION" ]; then
+  PKG_VERSION="$REF"
+fi
+info "Installing CLI package version ${PKG_VERSION} (from ${REF})"
 
 case "$CRYPTOBIN_CLI" in
   c)

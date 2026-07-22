@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { MAX_CIPHERTEXT_B64_LENGTH } from './secretLimits';
 import { bytesToBase64Url } from './encoding';
 import { shareLinkProfileForTtlHours } from './shareLink';
 
@@ -7,7 +8,7 @@ export const storedSecretSchema = z.object({
   version: z.literal(1),
   algorithm: z.enum(['AES-GCM-256', 'AES-GCM-128']),
   iv: z.string().min(12),
-  ciphertext: z.string().min(16),
+  ciphertext: z.string().min(16).max(MAX_CIPHERTEXT_B64_LENGTH),
   metadataPreview: z
     .object({
       from: z.string().max(120).optional(),

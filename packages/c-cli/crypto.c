@@ -6,6 +6,7 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int base64url_encode(const uint8_t *in, size_t in_len, char *out, size_t out_cap) {
@@ -104,7 +105,7 @@ static int append_metadata_field(
   const char *key,
   const char *value,
   int *first) {
-  char escaped[CRYPTOBIN_MAX_JSON];
+  char escaped[CRYPTOBIN_METADATA_ESCAPED];
 
   if (!value || !value[0]) {
     return 0;
@@ -203,6 +204,14 @@ static int aes_gcm_encrypt(
   return 0;
 }
 
+static size_t json_escape_worst_cap(size_t in_len) {
+  return in_len * 6 + 4;
+}
+
+static size_t b64url_cap(size_t raw_len) {
+  return ((raw_len + 2) / 3) * 4 + 8;
+}
+
 int encrypt_and_upload_secret(
   const char *body,
   const secret_opts_t *opts,
@@ -210,6 +219,12 @@ int encrypt_and_upload_secret(
   char *err,
   size_t err_cap) {
   if (!body || !opts || !result || !err || err_cap == 0) {
+    return -1;
+  }
+
+  size_t body_len = strlen(body);
+  if (body_len > CRYPTOBIN_MAX_SECRET) {
+    snprintf(err, err_cap, "Secret is too large (max 4 MiB)");
     return -1;
   }
 
@@ -227,93 +242,130 @@ int encrypt_and_upload_secret(
     return -1;
   }
 
-  char escaped_body[CRYPTOBIN_MAX_JSON];
-  if (json_escape(body, escaped_body, sizeof(escaped_body)) != 0) {
-    snprintf(err, err_cap, "Secret is too large to encode");
-    return -1;
+  size_t escaped_cap = json_escape_worst_cap(body_len);
+  char *escaped_body = malloc(escaped_cap);
+  char *inner = NULL;
+  uint8_t *cipher_buf = NULL;
+  char *ct_b64 = NULL;
+  char *request = NULL;
+  int rc = -1;
+
+  if (!escaped_body) {
+    snprintf(err, err_cap, "Out of memory");
+    goto cleanup;
   }
 
-  char inner[CRYPTOBIN_MAX_JSON];
+  if (json_escape(body, escaped_body, escaped_cap) != 0) {
+    snprintf(err, err_cap, "Secret is too large to encode");
+    goto cleanup;
+  }
+
+  size_t inner_cap = escaped_cap + 512;
+  inner = malloc(inner_cap);
+  if (!inner) {
+    snprintf(err, err_cap, "Out of memory");
+    goto cleanup;
+  }
+
   size_t pos = 0;
   int first = 1;
-  int n = snprintf(inner, sizeof(inner), "{\"body\":%s,\"metadata\":{", escaped_body);
-  if (n < 0 || (size_t)n >= sizeof(inner)) {
+  int n = snprintf(inner, inner_cap, "{\"body\":%s,\"metadata\":{", escaped_body);
+  if (n < 0 || (size_t)n >= inner_cap) {
     snprintf(err, err_cap, "Failed to build secret payload");
-    return -1;
+    goto cleanup;
   }
   pos = (size_t)n;
-  if (append_metadata_field(inner, &pos, sizeof(inner), "from", opts->from, &first) != 0 ||
-      append_metadata_field(inner, &pos, sizeof(inner), "label", opts->label, &first) != 0 ||
-      append_metadata_field(inner, &pos, sizeof(inner), "description", opts->description, &first) != 0) {
+  if (append_metadata_field(inner, &pos, inner_cap, "from", opts->from, &first) != 0 ||
+      append_metadata_field(inner, &pos, inner_cap, "label", opts->label, &first) != 0 ||
+      append_metadata_field(inner, &pos, inner_cap, "description", opts->description, &first) != 0) {
     snprintf(err, err_cap, "Metadata is too large");
-    return -1;
+    goto cleanup;
   }
-  if (pos + 2 >= sizeof(inner)) {
+  if (pos + 2 >= inner_cap) {
     snprintf(err, err_cap, "Failed to build secret payload");
-    return -1;
+    goto cleanup;
   }
   inner[pos++] = '}';
   inner[pos++] = '}';
   inner[pos] = '\0';
 
-  uint8_t cipher_buf[CRYPTOBIN_MAX_JSON + 32];
+  size_t plain_len = pos;
+  size_t cipher_cap = plain_len + 32;
+  cipher_buf = malloc(cipher_cap);
+  if (!cipher_buf) {
+    snprintf(err, err_cap, "Out of memory");
+    goto cleanup;
+  }
+
   size_t cipher_len = 0;
-  if (aes_gcm_encrypt(key, key_len, (const uint8_t *)inner, strlen(inner), cipher_buf, &cipher_len) != 0) {
+  if (aes_gcm_encrypt(key, key_len, (const uint8_t *)inner, plain_len, cipher_buf, &cipher_len) != 0) {
     snprintf(err, err_cap, "Encryption failed");
-    return -1;
+    goto cleanup;
   }
 
   char iv_b64[32];
-  char ct_b64[CRYPTOBIN_MAX_JSON];
   char key_b64[128];
-  if (base64url_encode(cipher_buf, 12, iv_b64, sizeof(iv_b64)) != 0 ||
-      base64url_encode(cipher_buf + 12, cipher_len - 12, ct_b64, sizeof(ct_b64)) != 0 ||
-      base64url_encode(key, key_len, key_b64, sizeof(key_b64)) != 0) {
-    snprintf(err, err_cap, "Encoding failed");
-    return -1;
+  size_t ct_cap = b64url_cap(cipher_len);
+  ct_b64 = malloc(ct_cap);
+  if (!ct_b64) {
+    snprintf(err, err_cap, "Out of memory");
+    goto cleanup;
   }
 
-  char request[CRYPTOBIN_MAX_JSON + 4096];
+  if (base64url_encode(cipher_buf, 12, iv_b64, sizeof(iv_b64)) != 0 ||
+      base64url_encode(cipher_buf + 12, cipher_len - 12, ct_b64, ct_cap) != 0 ||
+      base64url_encode(key, key_len, key_b64, sizeof(key_b64)) != 0) {
+    snprintf(err, err_cap, "Encoding failed");
+    goto cleanup;
+  }
+
+  size_t request_cap = ct_cap + 4096;
+  request = malloc(request_cap);
+  if (!request) {
+    snprintf(err, err_cap, "Out of memory");
+    goto cleanup;
+  }
+
   pos = 0;
   first = 1;
   n = snprintf(
     request,
-    sizeof(request),
+    request_cap,
     "{\"version\":1,\"algorithm\":\"%s\",\"iv\":\"%s\",\"ciphertext\":\"%s\",\"ttlHours\":%d",
     algorithm,
     iv_b64,
     ct_b64,
     opts->ttl_hours);
-  if (n < 0 || (size_t)n >= sizeof(request)) {
+  if (n < 0 || (size_t)n >= request_cap) {
     snprintf(err, err_cap, "Failed to build upload JSON");
-    return -1;
+    goto cleanup;
   }
   pos = (size_t)n;
 
   if (opts->from || opts->label || opts->description) {
-    n = snprintf(request + pos, sizeof(request) - pos, ",\"metadataPreview\":{");
-    if (n < 0 || (size_t)n >= sizeof(request) - pos) {
+    n = snprintf(request + pos, request_cap - pos, ",\"metadataPreview\":{");
+    if (n < 0 || (size_t)n >= request_cap - pos) {
       snprintf(err, err_cap, "Failed to build upload JSON");
-      return -1;
+      goto cleanup;
     }
     pos += (size_t)n;
     first = 1;
-    if (append_metadata_field(request, &pos, sizeof(request), "from", opts->from, &first) != 0 ||
-        append_metadata_field(request, &pos, sizeof(request), "label", opts->label, &first) != 0 ||
-        append_metadata_field(request, &pos, sizeof(request), "description", opts->description, &first) != 0) {
+    if (append_metadata_field(request, &pos, request_cap, "from", opts->from, &first) != 0 ||
+        append_metadata_field(request, &pos, request_cap, "label", opts->label, &first) != 0 ||
+        append_metadata_field(request, &pos, request_cap, "description", opts->description, &first) != 0) {
       snprintf(err, err_cap, "Metadata is too large");
-      return -1;
+      goto cleanup;
     }
-    if (pos + 1 >= sizeof(request)) {
+    if (pos + 1 >= request_cap) {
       snprintf(err, err_cap, "Failed to build upload JSON");
-      return -1;
+      goto cleanup;
     }
     request[pos++] = '}';
   }
 
-  if (pos + 2 >= sizeof(request)) {
+  if (pos + 2 >= request_cap) {
     snprintf(err, err_cap, "Failed to build upload JSON");
-    return -1;
+    goto cleanup;
   }
   request[pos++] = '}';
   request[pos] = '\0';
@@ -321,14 +373,22 @@ int encrypt_and_upload_secret(
   char base_url[CRYPTOBIN_MAX_URL];
   if (resolve_base_url(opts->base_url, base_url, sizeof(base_url)) != 0) {
     snprintf(err, err_cap, "Invalid server URL");
-    return -1;
+    goto cleanup;
   }
 
   if (post_secret_json(base_url, request, result->id, sizeof(result->id), err, err_cap) != 0) {
-    return -1;
+    goto cleanup;
   }
 
   snprintf(result->key_b64, sizeof(result->key_b64), "%s", key_b64);
   snprintf(result->url, sizeof(result->url), "%s/s/%s#%s", base_url, result->id, key_b64);
-  return 0;
+  rc = 0;
+
+cleanup:
+  free(request);
+  free(ct_b64);
+  free(cipher_buf);
+  free(inner);
+  free(escaped_body);
+  return rc;
 }
