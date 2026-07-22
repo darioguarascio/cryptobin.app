@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
-import { runCreateCommand } from './commands/create.js';
+import { registerSecretCommand } from './commands/secret.js';
 import { loadConfig, resolveBaseUrl, saveConfig } from './config.js';
 import { banner, brandGradient, icons } from './ui/theme.js';
 
@@ -35,39 +35,8 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     .description(`${brandGradient('CryptoBin')} — create encrypted one-time share links`)
     .version(readPackageVersion(), '-V, --version', 'Show version');
 
-  program
-    .command('create')
-    .description('Encrypt a secret locally and upload the ciphertext')
-    .argument('[secret]', 'Secret text (omit to prompt or read stdin)')
-    .option('-f, --file <path>', 'Read secret from a file')
-    .option('--from <name>', 'Optional sender metadata')
-    .option('--label <text>', 'Optional label metadata')
-    .option('--description <text>', 'Optional description metadata')
-    .option('--ttl <hours>', 'Link lifetime: 1, 24, 72, or 168', (value) => Number.parseInt(value, 10))
-    .option('-u, --url <base>', 'CryptoBin server base URL')
-    .option('--json', 'Print machine-readable JSON')
-    .option('-q, --quiet', 'Print only the share URL')
-    .option('--no-interactive', 'Skip prompts (requires secret, file, or stdin)')
-    .action(async (secret: string | undefined, options) => {
-      try {
-        await runCreateCommand({
-          secret,
-          file: options.file,
-          from: options.from,
-          label: options.label,
-          description: options.description,
-          ttl: options.ttl,
-          url: options.url,
-          json: options.json,
-          quiet: options.quiet,
-          interactive: options.interactive,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Something went wrong.';
-        console.error(`${pc.red(icons.warn)} ${message}`);
-        process.exitCode = 1;
-      }
-    });
+  registerSecretCommand(program, 'secret', 'Encrypt a secret and print a one-time share URL');
+  registerSecretCommand(program, 'create', 'Alias for secret', { quietWhenArg: false });
 
   const config = program.command('config').description('View or update CLI defaults');
 
@@ -100,6 +69,11 @@ export async function run(argv: string[] = process.argv): Promise<void> {
 
   program.action(() => {
     console.log(banner());
+    console.log('');
+    console.log(`${pc.dim('Usage:')}`);
+    console.log(`  ${pc.cyan('cryptobin secret')} ${pc.dim('"your secret"')}     ${pc.dim('# prints share URL')}`);
+    console.log(`  ${pc.cyan('echo token | cryptobin secret')}     ${pc.dim('# read from stdin')}`);
+    console.log(`  ${pc.cyan('cryptobin secret')}                   ${pc.dim('# interactive prompts')}`);
     console.log('');
     program.help();
   });

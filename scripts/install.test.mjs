@@ -19,4 +19,16 @@ describe('install.sh', () => {
     assert.match(source, /set -eu/);
     assert.match(source, /curl -fsSL/);
   });
+
+  it('documents cryptobin secret usage', () => {
+    const source = readFileSync(join(root, 'scripts', 'install.sh'), 'utf8');
+    assert.match(source, /cryptobin secret/);
+  });
+
+  it('supports native C CLI install path', () => {
+    const source = readFileSync(join(root, 'scripts', 'install.sh'), 'utf8');
+    assert.match(source, /CRYPTOBIN_CLI/);
+    assert.match(source, /packages\/c-cli/);
+    assert.match(source, /install_c_cli/);
+  });
 });

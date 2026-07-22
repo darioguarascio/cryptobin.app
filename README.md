@@ -54,7 +54,32 @@ Install from the site:
 curl -fsSL https://cryptobin.app/install.sh | sh
 ```
 
-Or from the repo: `npm run cli:build` then use the built binary from `packages/cli`.
+Or from the repo: `npm run cli:build` (Node) or build the C CLI locally:
+
+```bash
+sudo apt install build-essential libcurl4-openssl-dev   # Debian/Ubuntu
+make -C packages/c-cli
+./packages/c-cli/cryptobin secret "hello"
+```
+
+Requires **OpenSSL** and **libcurl**. Same commands as the Node CLI (`secret`, `create`, `config`).
+
+```bash
+npm run cli:c:build
+npm run cli:c:test
+```
+
+```bash
+# One-time link (prints URL)
+cryptobin secret "rotate-this-api-key"
+
+# From a file or pipe
+cryptobin secret -f ./token.txt
+echo "secret" | cryptobin secret
+
+# Interactive prompts
+cryptobin secret
+```
 
 ## Docker
 

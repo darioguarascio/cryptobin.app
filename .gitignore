@@ -9,4 +9,7 @@ CURSOR.md
 !.env.example
 coverage/
 test-results/
+packages/c-cli/cryptobin
+packages/c-cli/*.o
+packages/c-cli/test_crypto
 npm-debug.log*
