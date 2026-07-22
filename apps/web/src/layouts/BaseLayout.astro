@@ -1,5 +1,6 @@
 ---
 import SiteFooter from '@/components/SiteFooter.astro';
+import { resolveRybbitConfig } from '@/lib/siteEnv';
 import '../styles/global.css';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 const { title = 'CryptoBin', noIndex = false, showAuthLinks = false } = Astro.props;
+const rybbit = resolveRybbitConfig();
 ---
 
 <!doctype html>
@@ -39,12 +41,9 @@ const { title = 'CryptoBin', noIndex = false, showAuthLinks = false } = Astro.pr
         document.documentElement.style.colorScheme = theme;
       })();
     </script>
-    <script
-      is:inline
-      src="https://t.surl.it/api/script.js"
-      data-site-id="9"
-      defer
-    ></script>
+    {rybbit && (
+      <script src={rybbit.scriptSrc} data-site-id={rybbit.siteId} defer />
+    )}
   </head>
   <body>
     <slot />

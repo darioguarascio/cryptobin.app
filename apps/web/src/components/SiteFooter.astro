@@ -1,10 +1,12 @@
 ---
+import { resolveGithubRepoUrl } from '@/lib/siteEnv';
+
 interface Props {
   showAuthLinks?: boolean;
 }
 
 const { showAuthLinks = false } = Astro.props;
-const githubUrl = 'https://github.com/darioguarascio/cryptobin.app';
+const githubUrl = resolveGithubRepoUrl();
 ---
 
 <footer class="site-footer">

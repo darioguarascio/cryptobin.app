@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { sharedInboxMembers, users } from '@/db/schema';
+import { resolveSiteUrl, resolveSmtpFrom } from '@/lib/siteEnv';
 
 function createTransport() {
   const host = process.env.SMTP_HOST;
@@ -29,7 +30,7 @@ export async function sendInboxNotification(input: {
   const transporter = createTransport();
   if (!transporter) return;
 
-  const siteUrl = (process.env.SITE_URL ?? 'https://cryptobin.app').replace(/\/$/, '');
+  const siteUrl = resolveSiteUrl();
   const preview = input.preview?.label
     ? ` "${input.preview.label}"`
     : input.preview?.from
@@ -37,7 +38,7 @@ export async function sendInboxNotification(input: {
       : '';
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? 'noreply@cryptobin.app',
+    from: resolveSmtpFrom(),
     to: input.to,
     subject: 'New secret in your CryptoBin inbox',
     text: [
@@ -69,7 +70,7 @@ export async function sendSharedInboxNotification(input: {
   const emails = recipients.map((row) => row.email).filter(Boolean) as string[];
   if (!emails.length) return;
 
-  const siteUrl = (process.env.SITE_URL ?? 'https://cryptobin.app').replace(/\/$/, '');
+  const siteUrl = resolveSiteUrl();
   const preview = input.preview?.label
     ? ` "${input.preview.label}"`
     : input.preview?.from
@@ -77,7 +78,7 @@ export async function sendSharedInboxNotification(input: {
       : '';
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? 'noreply@cryptobin.app',
+    from: resolveSmtpFrom(),
     bcc: emails,
     subject: `New secret in shared inbox ${input.name}`,
     text: [

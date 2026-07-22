@@ -10,6 +10,10 @@ interface CreatedSecret {
   expiresAt: string;
 }
 
+interface CryptoBinAppProps {
+  siteHost?: string;
+}
+
 const TTL_OPTIONS = [
   { hours: 1,   label: '1 hr' },
   { hours: 24,  label: '24 hr' },
@@ -17,7 +21,7 @@ const TTL_OPTIONS = [
   { hours: 168, label: '7 days' },
 ];
 
-export default function CryptoBinApp() {
+export default function CryptoBinApp({ siteHost = 'localhost' }: CryptoBinAppProps) {
   const [secret,      setSecret]      = useState('');
   const [from,        setFrom]        = useState('');
   const [label,       setLabel]       = useState('');
@@ -340,7 +344,7 @@ export default function CryptoBinApp() {
               <span className="feature-card-icon" aria-hidden="true"><Inbox size={18} /></span>
               <h3>Encrypted inbox</h3>
               <p>
-                Claim a handle like <code>you.cryptobin.app/yourname</code>. Teammates drop
+                Claim a handle like <code>{siteHost}/yourname</code>. Teammates drop
                 secrets there; you decrypt and optionally save to your vault.
               </p>
               <a href="/register">Create your inbox →</a>

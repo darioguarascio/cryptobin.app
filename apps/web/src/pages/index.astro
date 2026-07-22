@@ -1,8 +1,11 @@
 ---
 import CryptoBinApp from '@/components/CryptoBinApp';
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { resolveSiteUrl, siteHostFromUrl } from '@/lib/siteEnv';
+
+const siteHost = siteHostFromUrl(resolveSiteUrl());
 ---
 
 <BaseLayout title="CryptoBin" showAuthLinks>
-  <CryptoBinApp client:load />
+  <CryptoBinApp client:load siteHost={siteHost} />
 </BaseLayout>

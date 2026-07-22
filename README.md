@@ -28,6 +28,8 @@ npm run dev
 
 The app listens on port **4321** by default. Postgres must be reachable at `DATABASE_URL` (see `.env.example`).
 
+Set **`SITE_URL`** to your public origin in production (emails and UI copy). Optional **[Rybbit](https://rybbit.io)** analytics: set **`RYBBIT_HOST`** (e.g. `https://t.surl.it`) and **`RYBBIT_SITE_ID`**; the tracking script is omitted if either is missing. Override the footer repo link with **`GITHUB_REPO_URL`**.
+
 ### Useful commands
 
 | Command | Purpose |

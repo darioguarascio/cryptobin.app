@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-export const DEFAULT_BASE_URL = 'https://cryptobin.app';
+export const DEFAULT_BASE_URL = 'https://cryptobin.app'; // override via CRYPTOBIN_URL or ~/.config/cryptobin/config.json
 export const CONFIG_PATH = join(homedir(), '.config', 'cryptobin', 'config.json');
 
 export interface CliConfig {
