@@ -25,10 +25,10 @@ describe('install.sh', () => {
     assert.match(source, /cryptobin secret/);
   });
 
-  it('supports native C CLI install path', () => {
+  it('uses printf %b for terminal styling', () => {
     const source = readFileSync(join(root, 'scripts', 'install.sh'), 'utf8');
-    assert.match(source, /CRYPTOBIN_CLI/);
-    assert.match(source, /packages\/c-cli/);
-    assert.match(source, /install_c_cli/);
+    assert.match(source, /printf '\\033'/);
+    assert.match(source, /say\(\)/);
+    assert.match(source, /c_cli_build_ready/);
   });
 });

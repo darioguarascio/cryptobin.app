@@ -11,13 +11,15 @@ REF="${CRYPTOBIN_VERSION:-main}"
 INSTALL_URL="${CRYPTOBIN_INSTALL_URL:-https://cryptobin.app}"
 CRYPTOBIN_CLI="${CRYPTOBIN_CLI:-auto}"
 
+# Use a real ESC byte; plain \033 in variables is not interpreted by printf %s.
 if [ -t 1 ]; then
-  RED='\033[0;31m'
-  GREEN='\033[0;32m'
-  CYAN='\033[0;36m'
-  DIM='\033[2m'
-  BOLD='\033[1m'
-  RESET='\033[0m'
+  ESC=$(printf '\033')
+  RED="${ESC}[0;31m"
+  GREEN="${ESC}[0;32m"
+  CYAN="${ESC}[0;36m"
+  DIM="${ESC}[2m"
+  BOLD="${ESC}[1m"
+  RESET="${ESC}[0m"
 else
   RED=''
   GREEN=''
@@ -27,16 +29,20 @@ else
   RESET=''
 fi
 
+say() {
+  printf '%b\n' "$*"
+}
+
 info() {
-  printf '%s\n' "${CYAN}→${RESET} $*"
+  say "${CYAN}→${RESET} $*"
 }
 
 success() {
-  printf '%s\n' "${GREEN}✔${RESET} $*"
+  say "${GREEN}✔${RESET} $*"
 }
 
 die() {
-  printf '%s\n' "${RED}error:${RESET} $*" >&2
+  say "${RED}error:${RESET} $*" >&2
   exit 1
 }
 
@@ -44,6 +50,39 @@ need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     die "$1 is required but was not found in PATH"
   fi
+}
+
+c_cli_compiler() {
+  if command -v cc >/dev/null 2>&1; then
+    printf '%s' cc
+    return 0
+  fi
+  if command -v gcc >/dev/null 2>&1; then
+    printf '%s' gcc
+    return 0
+  fi
+  return 1
+}
+
+c_cli_build_ready() {
+  if [ ! -f "$TMP/packages/c-cli/Makefile" ]; then
+    return 1
+  fi
+  if ! command -v make >/dev/null 2>&1; then
+    return 1
+  fi
+  CC="$(c_cli_compiler)" || return 1
+  if ! printf '%s\n' '#include <curl/curl.h>' '#include <openssl/evp.h>' | "$CC" -E -xc - -o /dev/null 2>/dev/null; then
+    return 1
+  fi
+  return 0
+}
+
+c_cli_build_hint() {
+  say "${DIM}Native CLI needs a C compiler plus libcurl and OpenSSL development headers.${RESET}"
+  say "${DIM}Debian/Ubuntu:${RESET} sudo apt install build-essential libcurl4-openssl-dev libssl-dev"
+  say "${DIM}Fedora/RHEL:${RESET} sudo dnf install gcc make libcurl-devel openssl-devel"
+  say "${DIM}macOS:${RESET} xcode-select --install  ·  brew install curl openssl"
 }
 
 install_prefix() {
@@ -72,43 +111,47 @@ path_hint() {
   case ":$PATH:" in
     *:"$bindir":*) ;;
     *)
-      printf '\n%s\n' "${DIM}Add to your shell profile:${RESET}"
+      say ""
+      say "${DIM}Add to your shell profile:${RESET}"
       printf '  %s\n' "export PATH=\"${bindir}:\$PATH\""
       ;;
   esac
 }
 
 print_quick_start() {
-  printf '\n%s\n' "${BOLD}Quick start${RESET}"
-  printf '%s\n' "${DIM}Share a secret (prints a one-time URL):${RESET}"
-  printf '  %s\n' "${CYAN}cryptobin secret \"your-secret-here\"${RESET}"
-  printf '%s\n' "${DIM}From stdin:${RESET}"
-  printf '  %s\n' "${CYAN}echo \"token\" | cryptobin secret${RESET}"
-  printf '%s\n' "${DIM}Interactive (prompts for secret and expiry):${RESET}"
-  printf '  %s\n' "${CYAN}cryptobin secret${RESET}"
-  printf '%s\n' "${DIM}Other commands:${RESET} cryptobin create (alias) · cryptobin config show · cryptobin --help"
-  printf '%s\n' "${DIM}Force Node CLI:${RESET} CRYPTOBIN_CLI=node … · ${DIM}Force C CLI:${RESET} CRYPTOBIN_CLI=c …"
-  printf '\n%s\n\n' "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.4.0 curl -fsSL ${INSTALL_URL}/install.sh | sh"
+  say ""
+  say "${BOLD}Quick start${RESET}"
+  say "${DIM}Share a secret (prints a one-time URL):${RESET}"
+  say "  ${CYAN}cryptobin secret \"your-secret-here\"${RESET}"
+  say "${DIM}From stdin:${RESET}"
+  say "  ${CYAN}echo \"token\" | cryptobin secret${RESET}"
+  say "${DIM}Interactive (prompts for secret and expiry):${RESET}"
+  say "  ${CYAN}cryptobin secret${RESET}"
+  say "${DIM}Other commands:${RESET} cryptobin create (alias) · cryptobin config show · cryptobin --help"
+  say "${DIM}Force Node CLI:${RESET} CRYPTOBIN_CLI=node … · ${DIM}Force C CLI:${RESET} CRYPTOBIN_CLI=c …"
+  say ""
+  say "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.6.2 curl -fsSL ${INSTALL_URL}/install.sh | sh"
+  say ""
 }
 
 install_c_cli() {
-  if [ ! -f "$TMP/packages/c-cli/Makefile" ]; then
-    return 1
-  fi
-  if ! command -v make >/dev/null 2>&1; then
-    return 1
-  fi
-  if ! command -v cc >/dev/null 2>&1 && ! command -v gcc >/dev/null 2>&1; then
+  if ! c_cli_build_ready; then
     return 1
   fi
 
   info "Building native CLI (C)…"
+  build_log="$(mktemp 2>/dev/null || mktemp -t cryptobin-build)"
   if ! (
     cd "$TMP/packages/c-cli"
-    make clean all test >/dev/null
+    make clean all test >"$build_log" 2>&1
   ); then
+    if [ -n "${CRYPTOBIN_VERBOSE:-}" ]; then
+      cat "$build_log" >&2
+    fi
+    rm -f "$build_log"
     return 1
   fi
+  rm -f "$build_log"
 
   bindir="$(ensure_bindir)"
   if ! install -m 755 "$TMP/packages/c-cli/cryptobin" "$bindir/cryptobin"; then
@@ -116,7 +159,7 @@ install_c_cli() {
   fi
 
   BIN="$bindir/cryptobin"
-  VERSION="$("$BIN" --version 2>/dev/null || true)"
+  VERSION="$("$BIN" --version 2>/dev/null | head -n 1 || true)"
   success "Installed cryptobin ${VERSION} → ${BIN}"
   path_hint
   print_quick_start
@@ -161,7 +204,7 @@ install_node_cli() {
     die "cryptobin was installed but is not on PATH. Add your npm global bin directory to PATH."
   fi
 
-  VERSION="$(cryptobin --version 2>/dev/null || true)"
+  VERSION="$(cryptobin -V 2>/dev/null | head -n 1 || cryptobin --version 2>/dev/null | head -n 1 || true)"
   success "Installed cryptobin ${VERSION} → ${BIN}"
   print_quick_start
 }
@@ -175,7 +218,9 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-printf '\n%s\n\n' "${BOLD}CryptoBin CLI installer${RESET}"
+say ""
+say "${BOLD}CryptoBin CLI installer${RESET}"
+say ""
 info "Source ${REPO}@${REF}"
 info "Default server ${INSTALL_URL}"
 info "Installer mode ${CRYPTOBIN_CLI}"
@@ -183,13 +228,14 @@ info "Installer mode ${CRYPTOBIN_CLI}"
 ARCHIVE="https://github.com/${REPO}/archive/${REF}.tar.gz"
 info "Downloading source archive…"
 if ! curl -fsSL "$ARCHIVE" | tar -xz -C "$TMP" --strip-components=1; then
-  die "Could not download ${ARCHIVE}. Set CRYPTOBIN_VERSION to a tag (e.g. v0.4.0) or branch name."
+  die "Could not download ${ARCHIVE}. Set CRYPTOBIN_VERSION to a tag (e.g. v0.6.2) or branch name."
 fi
 
 case "$CRYPTOBIN_CLI" in
   c)
     if ! install_c_cli; then
-      die "C CLI build failed. Install a C toolchain and libcurl/OpenSSL dev packages (e.g. build-essential libcurl4-openssl-dev libssl-dev on Debian/Ubuntu)."
+      c_cli_build_hint
+      die "C CLI build failed."
     fi
     ;;
   node)
@@ -199,7 +245,7 @@ case "$CRYPTOBIN_CLI" in
     if install_c_cli; then
       :
     else
-      info "Native build unavailable; falling back to Node CLI…"
+      info "Native CLI skipped (no toolchain/dev headers); using Node CLI…"
       install_node_cli
     fi
     ;;

@@ -10,8 +10,18 @@ import { banner, brandGradient, icons } from './ui/theme.js';
 
 function readPackageVersion(): string {
   const dir = dirname(fileURLToPath(import.meta.url));
-  const pkg = JSON.parse(readFileSync(join(dir, '..', 'package.json'), 'utf8')) as { version?: string };
-  return pkg.version ?? '0.0.0';
+  const candidates = [join(dir, '..', 'package.json'), join(dir, 'package.json')];
+  for (const path of candidates) {
+    try {
+      const pkg = JSON.parse(readFileSync(path, 'utf8')) as { version?: string };
+      if (pkg.version) {
+        return pkg.version;
+      }
+    } catch {
+      // try next path
+    }
+  }
+  return '0.0.0';
 }
 
 async function runConfigSet(url: string): Promise<void> {
