@@ -1,12 +1,14 @@
 ---
+import SiteFooter from '@/components/SiteFooter.astro';
 import '../styles/global.css';
 
 interface Props {
   title?: string;
   noIndex?: boolean;
+  showAuthLinks?: boolean;
 }
 
-const { title = 'CryptoBin', noIndex = false } = Astro.props;
+const { title = 'CryptoBin', noIndex = false, showAuthLinks = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -46,5 +48,6 @@ const { title = 'CryptoBin', noIndex = false } = Astro.props;
   </head>
   <body>
     <slot />
+    <SiteFooter showAuthLinks={showAuthLinks} />
   </body>
 </html>

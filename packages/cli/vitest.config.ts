@@ -6,7 +6,8 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json', 'json-summary', 'lcov'],
+      reportOnFailure: true,
       include: ['src/lib/**/*.ts', 'src/config.ts'],
       thresholds: {
         statements: 80,

@@ -1,0 +1,24 @@
+---
+interface Props {
+  showAuthLinks?: boolean;
+}
+
+const { showAuthLinks = false } = Astro.props;
+const githubUrl = 'https://github.com/darioguarascio/cryptobin.app';
+---
+
+<footer class="site-footer">
+  <p>
+    CryptoBin — zero-knowledge secret exchange.
+    {showAuthLinks && (
+      <>
+        {' '}
+        <a href="/register">Get an inbox</a>
+        {' · '}
+        <a href="/login">Log in</a>
+      </>
+    )}
+    {' · '}
+    <a href={githubUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
+  </p>
+</footer>

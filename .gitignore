@@ -1,8 +1,12 @@
 node_modules/
 dist/
 .astro/
+.cursor/
+AGENTS.md
+CURSOR.md
 .env
 .env.*
 !.env.example
 coverage/
+test-results/
 npm-debug.log*

@@ -12,6 +12,8 @@
     "preview": "npm --workspace @cryptobin/web run preview",
     "test": "npm --workspace @cryptobin/web run test && npm --workspace @cryptobin/cli run test && node --test scripts/install.test.mjs",
     "test:coverage": "npm --workspace @cryptobin/web run test:coverage && npm --workspace @cryptobin/cli run test:coverage",
+    "test:integration": "bash scripts/test-integration.sh",
+    "test:all": "npm run test && npm run test:integration",
     "cli": "npm --workspace @cryptobin/cli run dev",
     "cli:build": "npm --workspace @cryptobin/cli run build",
     "cli:install": "curl -fsSL https://cryptobin.app/install.sh | sh",

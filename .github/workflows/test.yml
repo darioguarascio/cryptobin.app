@@ -4,15 +4,19 @@ on:
   pull_request:
   push:
     branches: [main, master, dev]
+    tags: ['v*']
   workflow_call:
 
 jobs:
   unit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -20,3 +24,71 @@ jobs:
       - run: npm ci
       - run: bash scripts/check-migrations.sh
       - run: npm run test:coverage
+      - name: Code coverage summary
+        if: always()
+        run: node scripts/ci/coverage-github-summary.mjs
+      - name: PR coverage comment (web)
+        if: always() && github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: apps/web
+          name: web
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json
+          vite-config-path: vitest.config.ts
+      - name: PR coverage comment (CLI)
+        if: always() && github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: packages/cli
+          name: cli
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json
+          vite-config-path: vitest.config.ts
+      - name: Upload unit coverage
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: unit-coverage
+          path: |
+            apps/web/coverage/
+            packages/cli/coverage/
+          if-no-files-found: error
+          retention-days: 14
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgres://postgres@127.0.0.1:5432/cryptobin_test
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: npm run test:integration
+      - name: Upload integration (e2e) results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: integration-e2e-results
+          path: apps/web/test-results/integration/
+          if-no-files-found: warn
+          retention-days: 14

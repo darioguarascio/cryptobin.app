@@ -1,4 +1,4 @@
-import { CheckCircle, ChevronDown, Eye, Inbox, KeyRound, Link2, Lock, Plus, Send, ShieldCheck, Timer, Trash2, Users, Zap } from 'lucide-react';
+import { CheckCircle, ChevronDown, Eye, Inbox, KeyRound, Link2, Lock, Plus, Send, ShieldCheck, Timer, Trash2, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { buildShareUrl, encryptSecret } from '@/lib/crypto';
 import CipherHeroCanvas from './CipherHeroCanvas';
@@ -389,17 +389,6 @@ export default function CryptoBinApp() {
             </li>
           </ul>
         </section>
-
-        <footer className="site-footer">
-          <p>
-            <Zap size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 6, color: 'var(--accent)' }} aria-hidden="true" />
-            CryptoBin — zero-knowledge secret exchange.
-            {' '}
-            <a href="/register">Get an inbox</a>
-            {' · '}
-            <a href="/login">Log in</a>
-          </p>
-        </footer>
       </div>
     </div>
   );

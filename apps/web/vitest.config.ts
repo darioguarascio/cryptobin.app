@@ -13,9 +13,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    exclude: ['src/**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json', 'json-summary', 'lcov'],
+      reportOnFailure: true,
       include: ['src/lib/**/*.ts', 'src/types/**/*.ts'],
       thresholds: {
         statements: 80,
