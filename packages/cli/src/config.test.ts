@@ -2,7 +2,15 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadConfig, resolveBaseUrl, resolveConfiguredBaseUrl, saveConfig } from './config.js';
+import {
+  apiHostHeaders,
+  loadConfig,
+  resolveApiBaseUrl,
+  resolveApiVhost,
+  resolveBaseUrl,
+  resolveConfiguredBaseUrl,
+  saveConfig,
+} from './config.js';
 
 let tempDir = '';
 let configPath = '';
@@ -18,7 +26,7 @@ afterEach(async () => {
 
 describe('config', () => {
   it('prefers explicit URLs', () => {
-    expect(resolveBaseUrl('https://dev.example/')).toBe('https://dev.example');
+    expect(resolveBaseUrl('https://custom.example/')).toBe('https://custom.example');
   });
 
   it('falls back to CRYPTOBIN_URL and default', () => {
@@ -50,5 +58,14 @@ describe('config', () => {
     await expect(resolveConfiguredBaseUrl('https://override.example', configPath)).resolves.toBe(
       'https://override.example',
     );
+  it('resolves API base URL and vhost overrides', () => {
+    vi.stubEnv('CRYPTOBIN_API_URL', 'http://127.0.0.1:18080/');
+    expect(resolveApiBaseUrl('https://cryptobin.app')).toBe('http://127.0.0.1:18080');
+    expect(resolveApiVhost('https://cryptobin.app')).toBe('cryptobin.app');
+    vi.stubEnv('CRYPTOBIN_API_HOST', 'edge.example');
+    expect(resolveApiVhost('https://cryptobin.app')).toBe('edge.example');
+    expect(apiHostHeaders('https://cryptobin.app', 'http://127.0.0.1:18080')).toEqual({
+      Host: 'edge.example',
+    });
   });
 });
