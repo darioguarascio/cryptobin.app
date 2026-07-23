@@ -195,7 +195,7 @@ print_quick_start() {
   say "${DIM}Other commands:${RESET} cryptobin create (alias) · cryptobin config show · cryptobin --help"
   say "${DIM}Force Node CLI:${RESET} CRYPTOBIN_CLI=node … · ${DIM}Force C CLI:${RESET} CRYPTOBIN_CLI=c …"
   say ""
-  say "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.6.7 curl -fsSL ${INSTALL_URL}/install.sh | sh"
+  say "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.6.8 curl -fsSL ${INSTALL_URL}/install.sh | sh"
   say ""
 }
 
