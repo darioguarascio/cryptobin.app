@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
-static const char *VERSION = "0.1.0";
+static const char *VERSION = "0.6.8";
 int cryptobin_cli_verbose = 0;
 
 static void vlog(const char *fmt, ...) {

@@ -1,6 +1,6 @@
 {
   "name": "@cryptobin/cli",
-  "version": "0.1.0",
+  "version": "0.6.7",
   "description": "Create encrypted CryptoBin share links from your terminal",
   "type": "module",
   "bin": {

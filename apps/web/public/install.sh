@@ -7,7 +7,6 @@
 set -eu
 
 REPO="${CRYPTOBIN_GITHUB_REPO:-darioguarascio/cryptobin.app}"
-REF="${CRYPTOBIN_VERSION:-main}"
 INSTALL_URL="${CRYPTOBIN_INSTALL_URL:-https://cryptobin.app}"
 CRYPTOBIN_CLI="${CRYPTOBIN_CLI:-auto}"
 
@@ -83,6 +82,25 @@ c_cli_build_hint() {
   say "${DIM}Debian/Ubuntu:${RESET} sudo apt install build-essential libcurl4-openssl-dev libssl-dev"
   say "${DIM}Fedora/RHEL:${RESET} sudo dnf install gcc make libcurl-devel openssl-devel"
   say "${DIM}macOS:${RESET} xcode-select --install  ·  brew install curl openssl"
+}
+
+fetch_latest_release_tag() {
+  curl -fsSL "https://api.github.com/repos/${REPO}/tags?per_page=1" 2>/dev/null \
+    | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    | head -n 1
+}
+
+resolve_install_ref() {
+  if [ -n "${CRYPTOBIN_VERSION:-}" ]; then
+    printf '%s' "$CRYPTOBIN_VERSION"
+    return 0
+  fi
+  latest="$(fetch_latest_release_tag || true)"
+  if [ -n "$latest" ]; then
+    printf '%s' "$latest"
+    return 0
+  fi
+  printf '%s' main
 }
 
 read_cli_package_version() {
@@ -172,10 +190,12 @@ print_quick_start() {
   say "  ${CYAN}echo \"token\" | cryptobin secret${RESET}"
   say "${DIM}Interactive (prompts for secret and expiry):${RESET}"
   say "  ${CYAN}cryptobin secret${RESET}"
+  say "${DIM}Live stream (share URL on stderr when piped):${RESET}"
+  say "  ${CYAN}tail -f log | cryptobin stream${RESET}"
   say "${DIM}Other commands:${RESET} cryptobin create (alias) · cryptobin config show · cryptobin --help"
   say "${DIM}Force Node CLI:${RESET} CRYPTOBIN_CLI=node … · ${DIM}Force C CLI:${RESET} CRYPTOBIN_CLI=c …"
   say ""
-  say "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.6.3 curl -fsSL ${INSTALL_URL}/install.sh | sh"
+  say "${DIM}Pin a release:${RESET} CRYPTOBIN_VERSION=v0.6.7 curl -fsSL ${INSTALL_URL}/install.sh | sh"
   say ""
 }
 
@@ -257,6 +277,8 @@ install_node_cli() {
 need_cmd curl
 need_cmd tar
 
+REF="$(resolve_install_ref)"
+
 TMP="$(mktemp -d 2>/dev/null || mktemp -d -t cryptobin)"
 cleanup() {
   rm -rf "$TMP"
@@ -280,7 +302,7 @@ PKG_VERSION="$(read_cli_package_version || true)"
 if [ -z "$PKG_VERSION" ]; then
   PKG_VERSION="$REF"
 fi
-info "Installing CLI package version ${PKG_VERSION} (from ${REF})"
+info "Installing CLI release ${REF} (package ${PKG_VERSION})"
 
 case "$CRYPTOBIN_CLI" in
   c)

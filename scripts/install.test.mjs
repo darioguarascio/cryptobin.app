@@ -35,7 +35,7 @@ describe('install.sh', () => {
   it('reports package version after download', () => {
     const source = readFileSync(join(root, 'scripts', 'install.sh'), 'utf8');
     assert.match(source, /read_cli_package_version/);
-    assert.match(source, /Installing CLI package version/);
+    assert.match(source, /Installing CLI release/);
     assert.match(source, /format_installed_version/);
   });
 });
