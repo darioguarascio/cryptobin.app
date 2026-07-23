@@ -1,0 +1,5 @@
+# nginx-proxy per-vhost snippet: copy to /etc/nginx/vhost.d/<VIRTUAL_HOST>_location
+proxy_buffering off;
+proxy_cache off;
+proxy_read_timeout 3600s;
+proxy_send_timeout 3600s;

@@ -1,0 +1,10 @@
+---
+import StreamViewPage from '@/components/StreamViewPage';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+const { id } = Astro.params;
+---
+
+<BaseLayout title="Live encrypted stream" noIndex>
+  <StreamViewPage client:load streamId={id ?? ''} />
+</BaseLayout>

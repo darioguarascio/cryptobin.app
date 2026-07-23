@@ -2,7 +2,7 @@ CC ?= gcc
 CFLAGS ?= -Wall -Wextra -Wpedantic -O2
 LDFLAGS ?= -lcurl -lssl -lcrypto
 
-SRCS = main.c crypto.c http.c config.c
+SRCS = main.c crypto.c http.c config.c stream.c
 OBJS = $(SRCS:.c=.o)
 BIN = cryptobin
 

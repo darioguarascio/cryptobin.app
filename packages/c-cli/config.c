@@ -129,6 +129,62 @@ static void strip_trailing_slash(char *url) {
   }
 }
 
+static int extract_url_host(const char *url, char *out, size_t out_cap) {
+  const char *p = url;
+  if (strncmp(p, "https://", 8) == 0) {
+    p += 8;
+  } else if (strncmp(p, "http://", 7) == 0) {
+    p += 7;
+  } else {
+    return -1;
+  }
+  size_t i = 0;
+  while (p[i] && p[i] != '/' && p[i] != '?' && p[i] != '#') {
+    if (i + 1 >= out_cap) {
+      return -1;
+    }
+    out[i] = p[i];
+    i++;
+  }
+  if (i == 0) {
+    return -1;
+  }
+  out[i] = '\0';
+  char *colon = strchr(out, ':');
+  if (colon) {
+    *colon = '\0';
+  }
+  return 0;
+}
+
+int resolve_api_base_url(const char *public_url, char *out, size_t out_cap) {
+  const char *env = getenv("CRYPTOBIN_API_URL");
+  if (env && env[0]) {
+    snprintf(out, out_cap, "%s", env);
+  } else if (public_url && public_url[0]) {
+    snprintf(out, out_cap, "%s", public_url);
+  } else {
+    return -1;
+  }
+  strip_trailing_slash(out);
+  if (strncmp(out, "http://", 7) != 0 && strncmp(out, "https://", 8) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+int resolve_api_vhost(const char *public_url, char *out, size_t out_cap) {
+  const char *env = getenv("CRYPTOBIN_API_HOST");
+  if (env && env[0]) {
+    snprintf(out, out_cap, "%s", env);
+    return 0;
+  }
+  if (!public_url || !public_url[0]) {
+    return -1;
+  }
+  return extract_url_host(public_url, out, out_cap);
+}
+
 int resolve_base_url(const char *flag_url, char *out, size_t out_cap) {
   const char *env = getenv("CRYPTOBIN_URL");
   if (flag_url && flag_url[0]) {

@@ -392,3 +392,47 @@ cleanup:
   free(escaped_body);
   return rc;
 }
+
+int generate_stream_key(uint8_t *key_out, char *key_b64, size_t key_b64_cap) {
+  if (!key_out || !key_b64) {
+    return -1;
+  }
+  if (RAND_bytes(key_out, CRYPTOBIN_STREAM_KEY_BYTES) != 1) {
+    return -1;
+  }
+  return base64url_encode(key_out, CRYPTOBIN_STREAM_KEY_BYTES, key_b64, key_b64_cap);
+}
+
+int encrypt_stream_frame(
+  const uint8_t key[CRYPTOBIN_STREAM_KEY_BYTES],
+  const uint8_t *plain,
+  size_t plain_len,
+  char *iv_b64,
+  size_t iv_cap,
+  char *ct_b64,
+  size_t ct_cap) {
+  if (!key || !plain || !iv_b64 || !ct_b64) {
+    return -1;
+  }
+
+  size_t cipher_cap = plain_len + 32;
+  uint8_t *cipher_buf = malloc(cipher_cap);
+  if (!cipher_buf) {
+    return -1;
+  }
+
+  size_t cipher_len = 0;
+  if (aes_gcm_encrypt(key, CRYPTOBIN_STREAM_KEY_BYTES, plain, plain_len, cipher_buf, &cipher_len) != 0) {
+    free(cipher_buf);
+    return -1;
+  }
+
+  int rc = -1;
+  if (base64url_encode(cipher_buf, 12, iv_b64, iv_cap) == 0 &&
+      base64url_encode(cipher_buf + 12, cipher_len - 12, ct_b64, ct_cap) == 0) {
+    rc = 0;
+  }
+
+  free(cipher_buf);
+  return rc;
+}

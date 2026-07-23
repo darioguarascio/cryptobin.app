@@ -13,6 +13,26 @@ export function resolveBaseUrl(explicit?: string): string {
   return (explicit ?? process.env.CRYPTOBIN_URL ?? DEFAULT_BASE_URL).replace(/\/$/, '');
 }
 
+export function resolveApiBaseUrl(publicUrl: string): string {
+  const raw = process.env.CRYPTOBIN_API_URL?.replace(/\/$/, '');
+  return raw && raw.length > 0 ? raw : publicUrl;
+}
+
+export function resolveApiVhost(publicUrl: string): string {
+  const envHost = process.env.CRYPTOBIN_API_HOST?.trim();
+  if (envHost) return envHost;
+  return new URL(publicUrl).hostname;
+}
+
+export function apiHostHeaders(publicUrl: string, apiUrl: string): Record<string, string> {
+  const vhost = resolveApiVhost(publicUrl);
+  const apiHost = new URL(apiUrl).hostname;
+  if (apiHost === vhost) {
+    return {};
+  }
+  return { Host: vhost };
+}
+
 export async function loadConfig(configPath = CONFIG_PATH): Promise<CliConfig> {
   try {
     const raw = await readFile(configPath, 'utf8');

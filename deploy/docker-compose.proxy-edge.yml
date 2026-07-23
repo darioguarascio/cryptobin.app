@@ -1,0 +1,22 @@
+# Optional: run behind jwilder/nginx-proxy (VIRTUAL_HOST / VIRTUAL_PORT on network proxy_edge).
+#
+#   docker network create proxy_edge
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.proxy-edge.yml up -d
+#
+# SSE: copy deploy/nginx-proxy-stream.location to the proxy vhost.d file for your hostname.
+
+services:
+  app:
+    expose:
+      - '4321'
+    environment:
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      VIRTUAL_PORT: '4321'
+      CRYPTOBIN_URL: ${CRYPTOBIN_URL:-${SITE_URL}}
+    networks:
+      - default
+      - proxy_edge
+
+networks:
+  proxy_edge:
+    external: true

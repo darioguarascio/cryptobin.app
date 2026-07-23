@@ -98,15 +98,25 @@ read_cli_package_version() {
 
 cli_version_string() {
   bin="$1"
+  line=""
+
   if [ -z "$bin" ] || [ ! -x "$bin" ]; then
     return 1
   fi
-  "$bin" -V 2>/dev/null | head -n 1
-  rc=$?
-  if [ "$rc" -eq 0 ] && [ -n "$("$bin" -V 2>/dev/null | head -n 1)" ]; then
+
+  line="$("$bin" -V 2>/dev/null | head -n 1 || true)"
+  if [ -n "$line" ]; then
+    printf '%s' "$line"
     return 0
   fi
-  "$bin" --version 2>/dev/null | head -n 1
+
+  line="$("$bin" --version 2>/dev/null | head -n 1 || true)"
+  if [ -n "$line" ]; then
+    printf '%s' "$line"
+    return 0
+  fi
+
+  return 1
 }
 
 format_installed_version() {

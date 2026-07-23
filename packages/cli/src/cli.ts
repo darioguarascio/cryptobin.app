@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
 import { registerSecretCommand } from './commands/secret.js';
+import { registerStreamCommand } from './commands/stream.js';
 import { loadConfig, resolveBaseUrl, saveConfig } from './config.js';
 import { banner, brandGradient, icons } from './ui/theme.js';
 
@@ -48,6 +49,7 @@ export async function run(argv: string[] = process.argv): Promise<void> {
 
   registerSecretCommand(program, 'secret', 'Encrypt a secret and print a one-time share URL');
   registerSecretCommand(program, 'create', 'Alias for secret', { quietWhenArg: false });
+  registerStreamCommand(program);
 
   const config = program.command('config').description('View or update CLI defaults');
 
@@ -84,6 +86,7 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     console.log(`${pc.dim('Usage:')}`);
     console.log(`  ${pc.cyan('cryptobin secret')} ${pc.dim('"your secret"')}     ${pc.dim('# prints share URL')}`);
     console.log(`  ${pc.cyan('echo token | cryptobin secret')}     ${pc.dim('# read from stdin')}`);
+    console.log(`  ${pc.cyan('tail -f log | cryptobin stream')}  ${pc.dim('# live encrypted stream URL')}`);
     console.log(`  ${pc.cyan('cryptobin secret')}                   ${pc.dim('# interactive prompts')}`);
     console.log('');
     program.help();

@@ -8,10 +8,10 @@
 #include <unistd.h>
 
 static const char *VERSION = "0.1.0";
-static int cli_verbose = 0;
+int cryptobin_cli_verbose = 0;
 
 static void vlog(const char *fmt, ...) {
-  if (!cli_verbose) {
+  if (!cryptobin_cli_verbose) {
     return;
   }
   va_list ap;
@@ -30,7 +30,7 @@ static int shift_verbose_flags(int argc, char **argv) {
   int write = 1;
   for (int read = 1; read < argc; read++) {
     if (argv_is_verbose_flag(argv[read])) {
-      cli_verbose = 1;
+      cryptobin_cli_verbose = 1;
       continue;
     }
     argv[write++] = argv[read];
@@ -39,11 +39,12 @@ static int shift_verbose_flags(int argc, char **argv) {
   return write;
 }
 
-static void usage(const char *argv0) {
+void cryptobin_print_usage(const char *argv0) {
   fprintf(stderr, "CryptoBin C CLI %s\n\n", VERSION);
   fprintf(stderr, "Usage:\n");
   fprintf(stderr, "  %s secret [text] [options]   Encrypt and print a one-time share URL\n", argv0);
   fprintf(stderr, "  %s create [text]             Alias for secret\n", argv0);
+  fprintf(stderr, "  %s stream [options]          Stream stdin to an encrypted live URL\n", argv0);
   fprintf(stderr, "  %s config show               Show configured server URL\n", argv0);
   fprintf(stderr, "  %s config set --url URL      Save default server URL\n", argv0);
   fprintf(stderr, "\nOptions for secret/create:\n");
@@ -54,9 +55,15 @@ static void usage(const char *argv0) {
   fprintf(stderr, "      --description TEXT\n");
   fprintf(stderr, "      -q, --quiet      Print only the share URL\n");
   fprintf(stderr, "  -v, --verbose        Print progress to stderr (repeatable before command)\n");
+  fprintf(stderr, "\nOptions for stream:\n");
+  fprintf(stderr, "  -u, --url URL        Server base URL\n");
+  fprintf(stderr, "      --ttl HOURS      1, 24, 72, or 168 (default 24)\n");
+  fprintf(stderr, "      --label TEXT     Optional stream label\n");
+  fprintf(stderr, "      -q, --quiet      Print only the share URL\n");
   fprintf(stderr, "\nExamples:\n");
   fprintf(stderr, "  %s secret \"rotate-this-key\"\n", argv0);
   fprintf(stderr, "  echo token | %s secret\n", argv0);
+  fprintf(stderr, "  tail -f log | %s stream\n", argv0);
 }
 
 static char *read_stdin_all(void) {
@@ -150,10 +157,10 @@ static int run_secret(int argc, char **argv, int start, int quiet_default) {
         quiet = 1;
         break;
       case 'v':
-        cli_verbose = 1;
+        cryptobin_cli_verbose = 1;
         break;
       case 'h':
-        usage(argv[0]);
+        cryptobin_print_usage(argv[0]);
         return 0;
       default:
         return 1;
@@ -215,7 +222,7 @@ static int run_secret(int argc, char **argv, int start, int quiet_default) {
 
 static int run_config(int argc, char **argv, int start) {
   if (start >= argc) {
-    usage(argv[0]);
+    cryptobin_print_usage(argv[0]);
     return 1;
   }
 
@@ -259,7 +266,7 @@ static int run_config(int argc, char **argv, int start) {
     return 0;
   }
 
-  usage(argv[0]);
+  cryptobin_print_usage(argv[0]);
   return 1;
 }
 
@@ -272,7 +279,7 @@ int main(int argc, char **argv) {
   }
 
   if (argc < 2) {
-    usage(argv[0]);
+    cryptobin_print_usage(argv[0]);
     return 1;
   }
 
@@ -284,15 +291,19 @@ int main(int argc, char **argv) {
     return run_secret(argc, argv, 2, 0);
   }
 
+  if (strcmp(argv[1], "stream") == 0) {
+    return run_stream(argc, argv, 2);
+  }
+
   if (strcmp(argv[1], "config") == 0) {
     return run_config(argc, argv, 2);
   }
 
   if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
-    usage(argv[0]);
+    cryptobin_print_usage(argv[0]);
     return 0;
   }
 
-  usage(argv[0]);
+  cryptobin_print_usage(argv[0]);
   return 1;
 }

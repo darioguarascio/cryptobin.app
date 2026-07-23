@@ -15,10 +15,10 @@ export default defineConfig({
     mode: 'standalone',
   }),
   integrations: [react()],
-  vite: {
-    envDir: rootDir,
-  },
   server: {
     port: 4321,
+  },
+  vite: {
+    envDir: rootDir,
   },
 });
