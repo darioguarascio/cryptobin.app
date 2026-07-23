@@ -58,6 +58,8 @@ describe('config', () => {
     await expect(resolveConfiguredBaseUrl('https://override.example', configPath)).resolves.toBe(
       'https://override.example',
     );
+  });
+
   it('resolves API base URL and vhost overrides', () => {
     vi.stubEnv('CRYPTOBIN_API_URL', 'http://127.0.0.1:18080/');
     expect(resolveApiBaseUrl('https://cryptobin.app')).toBe('http://127.0.0.1:18080');
